@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# populate_signatures.sh — Step F: Aggregated WSPR Signatures
+# populate_signatures.sh — Aggregated WSPR Signatures
 # ==============================================================================
 #
 # Populates wspr.signatures_v1 with median-based physical buckets from
@@ -38,7 +38,7 @@ TOTAL=0
 START_TIME=$(date +%s)
 
 echo "============================================================"
-echo "Step F: Populating wspr.signatures_v1"
+echo "Populating wspr.signatures_v1"
 echo "Target: ~93.8M rows (10 HF bands, median-bucketed)"
 echo "Host: ${CH_HOST}"
 echo "============================================================"

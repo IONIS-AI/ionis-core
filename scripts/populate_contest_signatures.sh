@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# populate_contest_signatures.sh — V16: Anchored Contest Signatures
+# populate_contest_signatures.sh — Anchored Contest Signatures
 # ==============================================================================
 #
 # Aggregates SSB and RTTY contest QSOs into signatures matching the WSPR
@@ -50,7 +50,7 @@ CONTEST_COUNT=$(clickhouse-client --host "$CH_HOST" --query \
     "SELECT count() FROM contest.bronze WHERE mode IN ('PH', 'RY')")
 
 echo "============================================================"
-echo "V16: Populating contest.signatures"
+echo "Populating contest.signatures"
 echo "============================================================"
 echo "Host:           ${CH_HOST}"
 echo "Callsign grid:  ${CG_COUNT} entries"
@@ -60,10 +60,15 @@ echo "Anchor values:  PH (SSB) = +10 dB, RY (RTTY) = 0 dB"
 echo "============================================================"
 echo ""
 
-# Create table if not exists
+# Create table if not exists (ddl/ = RPM, src/ = git repo)
+SCRIPT_DIR="$(dirname "$0")"
+DDL_FILE="23-contest_signatures.sql"
 clickhouse-client --host "$CH_HOST" --query "CREATE DATABASE IF NOT EXISTS contest"
-clickhouse-client --host "$CH_HOST" --multiquery < \
-    "$(dirname "$0")/../src/23-contest_signatures.sql" 2>/dev/null || true
+if [ -f "$SCRIPT_DIR/../ddl/$DDL_FILE" ]; then
+    clickhouse-client --host "$CH_HOST" --multiquery < "$SCRIPT_DIR/../ddl/$DDL_FILE" 2>/dev/null || true
+elif [ -f "$SCRIPT_DIR/../src/$DDL_FILE" ]; then
+    clickhouse-client --host "$CH_HOST" --multiquery < "$SCRIPT_DIR/../src/$DDL_FILE" 2>/dev/null || true
+fi
 
 # Truncate for idempotent re-run
 echo "Truncating contest.signatures..."
@@ -204,7 +209,7 @@ RTTY_SIGS=$(clickhouse-client --host "$CH_HOST" --query \
 
 echo ""
 echo "============================================================"
-echo "Population Complete — V16 Contest Signatures"
+echo "Population Complete — Contest Signatures"
 echo "============================================================"
 echo "Total signatures: ${TOTAL_SIGS}"
 echo "  SSB (+10 dB):   ${SSB_SIGS}"
@@ -212,5 +217,5 @@ echo "  RTTY (0 dB):    ${RTTY_SIGS}"
 echo "Wall time:        ${WALL}s"
 echo "============================================================"
 echo ""
-echo "Ready for V16 training join on M3."
+echo "Ready for training join on M3."
 echo "============================================================"

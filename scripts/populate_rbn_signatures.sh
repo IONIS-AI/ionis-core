@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# populate_rbn_signatures.sh — V17: RBN Grid-Enriched Signatures
+# populate_rbn_signatures.sh — RBN Grid-Enriched Signatures
 # ==============================================================================
 #
 # Aggregates CW, RTTY, and PSK31 RBN spots into signatures with REAL
@@ -58,7 +58,7 @@ RBN_COUNT=$(clickhouse-client --host "$CH_HOST" --query \
     "SELECT count() FROM rbn.bronze WHERE tx_mode IN ('CW', 'RTTY', 'PSK31', '')")
 
 echo "============================================================"
-echo "V17: Populating rbn.signatures"
+echo "Populating rbn.signatures"
 echo "============================================================"
 echo "Host:           ${CH_HOST}"
 echo "Callsign grid:  ${CG_COUNT} entries"
@@ -69,9 +69,14 @@ echo "Min bucket:     3 spots"
 echo "============================================================"
 echo ""
 
-# Create table if not exists
-clickhouse-client --host "$CH_HOST" --multiquery < \
-    "$(dirname "$0")/../src/24-rbn_signatures.sql" 2>/dev/null || true
+# Create table if not exists (ddl/ = RPM, src/ = git repo)
+SCRIPT_DIR="$(dirname "$0")"
+DDL_FILE="24-rbn_signatures.sql"
+if [ -f "$SCRIPT_DIR/../ddl/$DDL_FILE" ]; then
+    clickhouse-client --host "$CH_HOST" --multiquery < "$SCRIPT_DIR/../ddl/$DDL_FILE" 2>/dev/null || true
+elif [ -f "$SCRIPT_DIR/../src/$DDL_FILE" ]; then
+    clickhouse-client --host "$CH_HOST" --multiquery < "$SCRIPT_DIR/../src/$DDL_FILE" 2>/dev/null || true
+fi
 
 # Truncate for idempotent re-run
 echo "Truncating rbn.signatures..."
@@ -208,7 +213,7 @@ TOTAL_SIGS=$(clickhouse-client --host "$CH_HOST" --query \
 
 echo ""
 echo "============================================================"
-echo "Population Complete — V17 RBN Signatures"
+echo "Population Complete — RBN Signatures"
 echo "============================================================"
 echo "Total signatures: ${TOTAL_SIGS}"
 echo "Wall time:        ${WALL}s"
@@ -255,6 +260,6 @@ echo "Solar coverage:       ${SOLAR_PCT}%"
 echo ""
 
 echo "============================================================"
-echo "Ready for V17 training join on M3:"
+echo "Ready for training join on M3:"
 echo "  WSPR floor + Contest ceiling + RBN middle"
 echo "============================================================"

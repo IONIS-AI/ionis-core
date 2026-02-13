@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# populate_quality_test_paths.sh — Step K: Quality Test Path Selection
+# populate_quality_test_paths.sh — Quality Test Path Selection
 # ==============================================================================
 #
 # Populates validation.quality_test_paths with 100K high-confidence WSPR
@@ -31,7 +31,7 @@ set -e
 CH_HOST="${CH_HOST:-192.168.1.90}"
 
 echo "============================================================"
-echo "Step K: Populating validation.quality_test_paths"
+echo "Populating validation.quality_test_paths"
 echo "Host: ${CH_HOST}"
 echo "============================================================"
 echo ""

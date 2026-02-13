@@ -240,7 +240,7 @@ printf "\n${BLUE}[VALIDATE]${NC} Verifying schema installation...\n"
 
 if ! $DRY_RUN; then
     # Expected column counts per table (db:table:expected_cols)
-    VALIDATE_TABLES="wspr:bronze:17 solar:bronze:10 rbn:bronze:13 contest:bronze:12"
+    VALIDATE_TABLES="wspr:bronze:17 solar:bronze:11 rbn:bronze:13 contest:bronze:12"
 
     for triple in $VALIDATE_TABLES; do
         db_name="${triple%%:*}"

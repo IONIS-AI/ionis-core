@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# populate_signatures_v2_terrestrial.sh — Step F v2: Balloon-Filtered Signatures
+# populate_signatures_v2_terrestrial.sh — Balloon-Filtered Signatures
 # ==============================================================================
 #
 # Same aggregation as signatures_v1 but excludes spots contaminated by balloon
@@ -62,7 +62,7 @@ T2_COUNT=$(clickhouse-client --host "$CH_HOST" --query \
     "SELECT count() FROM wspr.balloon_callsigns_v2 WHERE flag_reason = 'type2_telemetry'")
 
 echo "============================================================"
-echo "Step F v2: Populating wspr.signatures_v2_terrestrial"
+echo "Populating wspr.signatures_v2_terrestrial"
 echo "Target: ~93.3M rows (V1 minus surgical balloon exclusion)"
 echo "Host: ${CH_HOST}"
 echo "Balloon V2 exclusions: ${BALLOON_COUNT} entries"
@@ -171,5 +171,5 @@ echo "Delta:          ${DELTA} signatures removed (${PCT}% — balloon contamina
 echo "Wall time:      ${WALL}s"
 echo "============================================================"
 echo ""
-echo "This table is ready for V14-TP-v2 training on M3."
+echo "This table is ready for training on M3."
 echo "============================================================"
