@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        3.0.0
+Version:        3.0.1
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -19,7 +19,7 @@ Requires:       clickhouse-client >= 23.0
 %description
 Core database schemas and initialization scripts for the IONIS
 (Ionospheric Neural Inference System) propagation analysis project.
-Includes 28 ClickHouse DDL schemas optimized for 10+ billion rows of
+Includes 29 ClickHouse DDL schemas optimized for 10+ billion rows of
 propagation data across WSPR, RBN, contest, PSK Reporter, solar, and
 validation databases.
 
@@ -76,6 +76,10 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/scripts/*.sh
 
 %changelog
+* Fri Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.1-1
+- Add DDL for rbn.dxpedition_signatures (29th schema, closes audit gap)
+- Update description: 29 DDL schemas (was 28)
+
 * Fri Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.0-1
 - Migrate to IONIS-AI organization (ionis-core)
 - Rename package: ki7mt-ai-lab-core → ionis-core
