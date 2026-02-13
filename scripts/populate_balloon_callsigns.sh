@@ -146,7 +146,7 @@ clickhouse-client --host "$CH_HOST" --query "
               NOT IN (SELECT callsign FROM wspr.balloon_callsigns_v2)
         GROUP BY cs
     )
-    SETTINGS max_threads = 64, max_memory_usage = 80000000000
+    SETTINGS max_threads = 64, max_memory_usage = 80000000000, join_use_nulls = 1
 "
 
 T2_COUNT=$(clickhouse-client --host "$CH_HOST" --query \

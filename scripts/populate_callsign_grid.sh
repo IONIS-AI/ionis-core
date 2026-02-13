@@ -3,15 +3,23 @@
 # populate_callsign_grid.sh — Callsign→Grid Rosetta Stone
 # ==============================================================================
 #
-# Populates wspr.callsign_grid from 10.8B wspr.bronze rows:
-#   Step 1: TX callsigns (callsign → grid) — ~3.5M entries
-#   Step 2: RX reporters (reporter → reporter_grid) — ~50K new entries
-#   Step 3: OPTIMIZE FINAL (ReplacingMergeTree dedup by most recent last_seen)
+# Populates wspr.callsign_grid from multiple sources:
+#   Step 1: WSPR TX callsigns (callsign → grid) — ~3.5M entries
+#   Step 2: WSPR RX reporters (reporter → reporter_grid) — ~50K new entries
+#   Step 3: PSKR senders (sender_call → sender_grid) — ~27K new entries
+#   Step 4: PSKR receivers (receiver_call → receiver_grid) — ~4K new entries
+#   Step 5: OPTIMIZE FINAL (ReplacingMergeTree dedup by most recent last_seen)
 #
 # The Rosetta Stone is the foundation for:
 #   - RBN grid enrichment (525M spots geolocated)
+#   - Contest grid enrichment (37M QSOs geolocated)
 #   - Balloon/telemetry detection (type2_telemetry flag requires this table)
 #   - Coverage analysis (grid counting)
+#
+# PSKR enrichment: PSK Reporter data provides callsign→grid for FT8/CW/RTTY
+# operators who never used WSPR. This adds ~30K callsigns critical for contest
+# and RBN signature coverage. Without PSKR, contest signatures drop from ~6M
+# to ~340K and RBN signatures from ~57M to ~27M.
 #
 # SAFEGUARD: Post-population assertion checks row count >= 3,000,000.
 # If the table has fewer rows than expected, it likely means wspr.bronze
@@ -21,6 +29,7 @@
 # Prerequisites:
 #   - wspr.callsign_grid table exists (07-callsign_grid.sql)
 #   - wspr.bronze populated (10.8B rows expected)
+#   - pskr.bronze populated (optional, ~100M+ spots for grid enrichment)
 #
 # Expected result: ~3.6M unique callsign→grid mappings
 # Total time on 9975WX: ~3-5 min
@@ -65,7 +74,7 @@ echo ""
 # --------------------------------------------------------------------------
 # Step 1: TX callsigns (callsign → grid)
 # --------------------------------------------------------------------------
-echo "[1/3] TX callsigns (callsign → grid)..."
+echo "[1/5] WSPR TX callsigns (callsign → grid)..."
 T0=$(date +%s)
 
 clickhouse-client --host "$CH_HOST" --query "
@@ -91,7 +100,7 @@ echo ""
 # --------------------------------------------------------------------------
 # Step 2: RX reporters (reporter → reporter_grid)
 # --------------------------------------------------------------------------
-echo "[2/3] RX reporters (reporter → reporter_grid)..."
+echo "[2/5] WSPR RX reporters (reporter → reporter_grid)..."
 T0=$(date +%s)
 
 clickhouse-client --host "$CH_HOST" --query "
@@ -115,9 +124,70 @@ echo "  Done ($(( T1 - T0 ))s): ${RX_COUNT} total rows after RX insert"
 echo ""
 
 # --------------------------------------------------------------------------
-# Step 3: OPTIMIZE FINAL (deduplicate)
+# Step 3: PSKR senders (sender_call → sender_grid)
 # --------------------------------------------------------------------------
-echo "[3/3] OPTIMIZE FINAL (ReplacingMergeTree dedup)..."
+PSKR_COUNT=$(clickhouse-client --host "$CH_HOST" --query \
+    "SELECT count() FROM pskr.bronze" 2>/dev/null || echo "0")
+
+if [ "$PSKR_COUNT" -gt 0 ]; then
+    echo "[3/5] PSKR senders (sender_call → sender_grid)..."
+    T0=$(date +%s)
+
+    clickhouse-client --host "$CH_HOST" --query "
+        INSERT INTO wspr.callsign_grid
+        SELECT
+            sender_call                                    AS callsign,
+            substring(sender_grid, 1, 6)                   AS grid,
+            substring(sender_grid, 1, 4)                   AS grid_4,
+            count()                                         AS spot_count,
+            max(toDate(timestamp))                          AS last_seen
+        FROM pskr.bronze
+        WHERE length(sender_grid) >= 4
+          AND match(sender_grid, '^[A-R]{2}[0-9]{2}')
+        GROUP BY sender_call, sender_grid
+        SETTINGS max_threads = 32, max_memory_usage = 40000000000
+    "
+
+    PSKR_TX=$(clickhouse-client --host "$CH_HOST" --query "SELECT count() FROM wspr.callsign_grid")
+    T1=$(date +%s)
+    echo "  Done ($(( T1 - T0 ))s): ${PSKR_TX} total rows after PSKR sender insert"
+    echo ""
+
+    # --------------------------------------------------------------------------
+    # Step 4: PSKR receivers (receiver_call → receiver_grid)
+    # --------------------------------------------------------------------------
+    echo "[4/5] PSKR receivers (receiver_call → receiver_grid)..."
+    T0=$(date +%s)
+
+    clickhouse-client --host "$CH_HOST" --query "
+        INSERT INTO wspr.callsign_grid
+        SELECT
+            receiver_call                                   AS callsign,
+            substring(receiver_grid, 1, 6)                  AS grid,
+            substring(receiver_grid, 1, 4)                  AS grid_4,
+            count()                                          AS spot_count,
+            max(toDate(timestamp))                           AS last_seen
+        FROM pskr.bronze
+        WHERE length(receiver_grid) >= 4
+          AND match(receiver_grid, '^[A-R]{2}[0-9]{2}')
+        GROUP BY receiver_call, receiver_grid
+        SETTINGS max_threads = 32, max_memory_usage = 40000000000
+    "
+
+    PSKR_RX=$(clickhouse-client --host "$CH_HOST" --query "SELECT count() FROM wspr.callsign_grid")
+    T1=$(date +%s)
+    echo "  Done ($(( T1 - T0 ))s): ${PSKR_RX} total rows after PSKR receiver insert"
+    echo ""
+else
+    echo "[3/5] PSKR senders — skipped (pskr.bronze empty or not found)"
+    echo "[4/5] PSKR receivers — skipped (pskr.bronze empty or not found)"
+    echo ""
+fi
+
+# --------------------------------------------------------------------------
+# Step 5: OPTIMIZE FINAL (deduplicate)
+# --------------------------------------------------------------------------
+echo "[5/5] OPTIMIZE FINAL (ReplacingMergeTree dedup)..."
 T0=$(date +%s)
 
 clickhouse-client --host "$CH_HOST" --query \

@@ -54,14 +54,14 @@ clickhouse-client --host "$CH_HOST" --query "
     SELECT
         rowNumberInAllBlocks() + 1 AS path_id,
         tx_grid_4, rx_grid_4,
-        (toUInt8(substring(tx_grid_4,2,1)) - 65) * 10
-            + toUInt8(substring(tx_grid_4,4,1)) - 48 + 0.5 - 90 AS tx_lat,
-        (toUInt8(substring(tx_grid_4,1,1)) - 65) * 20
-            + (toUInt8(substring(tx_grid_4,3,1)) - 48) * 2 + 1 - 180 AS tx_lon,
-        (toUInt8(substring(rx_grid_4,2,1)) - 65) * 10
-            + toUInt8(substring(rx_grid_4,4,1)) - 48 + 0.5 - 90 AS rx_lat,
-        (toUInt8(substring(rx_grid_4,1,1)) - 65) * 20
-            + (toUInt8(substring(rx_grid_4,3,1)) - 48) * 2 + 1 - 180 AS rx_lon,
+        (reinterpretAsUInt8(substring(tx_grid_4,2,1)) - 65) * 10
+            + reinterpretAsUInt8(substring(tx_grid_4,4,1)) - 48 + 0.5 - 90 AS tx_lat,
+        (reinterpretAsUInt8(substring(tx_grid_4,1,1)) - 65) * 20
+            + (reinterpretAsUInt8(substring(tx_grid_4,3,1)) - 48) * 2 + 1 - 180 AS tx_lon,
+        (reinterpretAsUInt8(substring(rx_grid_4,2,1)) - 65) * 10
+            + reinterpretAsUInt8(substring(rx_grid_4,4,1)) - 48 + 0.5 - 90 AS rx_lat,
+        (reinterpretAsUInt8(substring(rx_grid_4,1,1)) - 65) * 20
+            + (reinterpretAsUInt8(substring(rx_grid_4,3,1)) - 48) * 2 + 1 - 180 AS rx_lon,
         band,
         multiIf(band=102,1.84, band=103,3.57, band=104,5.29, band=105,7.04,
                 band=106,10.14, band=107,14.10, band=108,18.10, band=109,21.10,
