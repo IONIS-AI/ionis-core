@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        3.0.1
+Version:        3.0.2
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -76,6 +76,14 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/scripts/*.sh
 
 %changelog
+* Thu Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.2-1
+- Fix populate_callsign_grid.sh: add PSKR sender/receiver enrichment
+- Fix populate_balloon_callsigns.sh: add join_use_nulls=1 for type2 detection
+- Fix populate_quality_test_paths.sh: toUInt8 → reinterpretAsUInt8
+- Fix DDL path resolution in rbn/contest scripts (../ddl/ for RPM, ../src/ for git)
+- Strip stale V16/V17/Step version labels from all population scripts
+- Fix ionis-db-init: solar.bronze expected columns 10 → 11
+
 * Fri Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.1-1
 - Add DDL for rbn.dxpedition_signatures (29th schema, closes audit gap)
 - Update description: 29 DDL schemas (was 28)
