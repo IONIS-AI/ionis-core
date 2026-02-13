@@ -76,20 +76,20 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/scripts/*.sh
 
 %changelog
-* Thu Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.0-1
+* Fri Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.0-1
 - Migrate to IONIS-AI organization (ionis-core)
 - Rename package: ki7mt-ai-lab-core → ionis-core
 - Rename scripts: ki7mt-lab-db-init → ionis-db-init, ki7mt-lab-env → ionis-env
 - Add Obsoletes/Provides for seamless upgrade from ki7mt-ai-lab-core
 
-* Tue Feb 11 2026 Greg Beam <ki7mt@yahoo.com> - 2.4.0-1
+* Wed Feb 11 2026 Greg Beam <ki7mt@yahoo.com> - 2.4.0-1
 - V20 production release
 - Add DDL files 16-28: validation, balloon, dxpedition, signatures v2,
   pskr schema, contest/rbn signatures, live conditions, model results,
   mode thresholds, pskr ingest log
 - Update description: 28 DDL schemas (was 15)
 
-* Sat Feb 08 2026 Greg Beam <ki7mt@yahoo.com> - 2.3.1-1
+* Sun Feb 08 2026 Greg Beam <ki7mt@yahoo.com> - 2.3.1-1
 - Medallion architecture: rename spots_raw->bronze, model_features->silver, training->gold
 - Update README with 15 DDL schemas, convert tables to code blocks for COPR
 
@@ -111,7 +111,7 @@ echo "------------------------------------------------------------"
 - Sync version across all lab packages
 - Fix maintainer email in changelog
 
-* Sun Jan 18 2025 Greg Beam <ki7mt@yahoo.com> - 2.0.0-1
+* Sat Jan 18 2025 Greg Beam <ki7mt@yahoo.com> - 2.0.0-1
 - Major version bump to align with ki7mt-ai-lab-apps v2.0.0
 
 * Fri Jan 17 2025 Greg Beam <ki7mt@yahoo.com> - 1.1.7-1
@@ -128,9 +128,9 @@ echo "------------------------------------------------------------"
 * Fri Jan 17 2025 Greg Beam <ki7mt@yahoo.com> - 1.1.5-1
 - Version sync with ki7mt-ai-lab-cuda
 
-* Fri Jan 16 2025 Greg Beam <ki7mt@yahoo.com> - 1.1.4-1
+* Thu Jan 16 2025 Greg Beam <ki7mt@yahoo.com> - 1.1.4-1
 - Hardcode Source0 URL to avoid rpkg naming conflicts
 
-* Fri Jan 16 2025 Greg Beam <ki7mt@yahoo.com> - 1.1.3-1
+* Thu Jan 16 2025 Greg Beam <ki7mt@yahoo.com> - 1.1.3-1
 - Switch to GitHub archive Source0 for COPR builds
 - Add --push flag to bump-version script
