@@ -1,5 +1,5 @@
 -- ============================================================================
--- ki7mt-ai-lab-core: Quality Distribution Materialized View
+-- ionis-core: Quality Distribution Materialized View
 -- ============================================================================
 -- Aggregates silver into hourly quality buckets for monitoring
 -- the distribution of propagation scores across bands and time.

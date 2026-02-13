@@ -1,5 +1,5 @@
 -- ============================================================================
--- ki7mt-ai-lab-core: Callsign → Grid Rosetta Stone
+-- ionis-core: Callsign → Grid Rosetta Stone
 -- ============================================================================
 -- Maps callsigns to their most-used 6-char Maidenhead grid from WSPR data.
 -- Primary use: enriching RBN spots (which have no grid squares) with location.

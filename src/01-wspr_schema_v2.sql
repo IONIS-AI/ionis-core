@@ -6,7 +6,7 @@
 -- ==============================================================================
 --
 -- SCHEMA VERSION: 2.0
--- SYNCHRONIZED WITH: ki7mt-ai-lab-cuda/src/cuda/wspr_structs.h
+-- SYNCHRONIZED WITH: ionis-cuda/src/cuda/wspr_structs.h
 --
 -- CRITICAL: This schema MUST match the WSPRSpot C struct exactly!
 --   - Column ORDER must match struct field order

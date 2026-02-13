@@ -12,7 +12,7 @@
 --
 -- Usage:
 --   INSERT INTO data_mgmt.lab_versions (component, version)
---   VALUES ('ki7mt-ai-lab-core', '1.1.6');
+--   VALUES ('ionis-core', '3.0.0');
 --
 -- Query latest:
 --   SELECT component, version, installed_at

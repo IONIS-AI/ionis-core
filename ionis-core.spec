@@ -1,23 +1,27 @@
-Name:           ki7mt-ai-lab-core
-Version:        2.4.0
+Name:           ionis-core
+Version:        3.0.0
 Release:        1%{?dist}
-Summary:        Core database schemas for the KI7MT AI Lab
+Summary:        Core database schemas for the IONIS propagation analysis system
 
 License:        GPL-3.0-or-later
-URL:            https://github.com/KI7MT/ki7mt-ai-lab-core
+URL:            https://github.com/IONIS-AI/ionis-core
 # Hardcoded Source avoids rpkg naming conflicts
-Source0:        https://github.com/KI7MT/ki7mt-ai-lab-core/archive/v%{version}.tar.gz
+Source0:        https://github.com/IONIS-AI/ionis-core/archive/v%{version}.tar.gz
 
 BuildArch:      noarch
+
+Obsoletes:      ki7mt-ai-lab-core < 3.0.0
+Provides:       ki7mt-ai-lab-core = %{version}-%{release}
 
 Requires:       clickhouse-server >= 23.0
 Requires:       clickhouse-client >= 23.0
 
 %description
-Core database schemas and initialization scripts for the KI7MT AI Lab
-WSPR/Solar data analysis project. Includes 28 ClickHouse DDL schemas
-optimized for 10+ billion rows of propagation data across WSPR, RBN,
-contest, PSK Reporter, solar, and validation databases.
+Core database schemas and initialization scripts for the IONIS
+(Ionospheric Neural Inference System) propagation analysis project.
+Includes 28 ClickHouse DDL schemas optimized for 10+ billion rows of
+propagation data across WSPR, RBN, contest, PSK Reporter, solar, and
+validation databases.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -32,7 +36,7 @@ install -d %{buildroot}%{_datadir}/%{name}/ddl
 install -d %{buildroot}%{_datadir}/%{name}/scripts
 
 # Install and process scripts (substitute @PROGRAM@ and @VERSION@)
-for script in ki7mt-lab-db-init ki7mt-lab-env; do
+for script in ionis-db-init ionis-env; do
     sed -e 's|@PROGRAM@|%{name}|g' \
         -e 's|@VERSION@|%{version}|g' \
         src/${script} > %{buildroot}%{_bindir}/${script}
@@ -55,16 +59,16 @@ done
 
 %post
 echo "------------------------------------------------------------"
-echo " KI7MT AI Lab Core v%{version} installed successfully."
+echo " IONIS Core v%{version} installed successfully."
 echo " To finalize the database schema and version stamp, run:"
-echo "   ki7mt-lab-db-init --stamp-version"
+echo "   ionis-db-init --stamp-version"
 echo "------------------------------------------------------------"
 
 %files
 %license COPYING
 %doc README.md
-%{_bindir}/ki7mt-lab-db-init
-%{_bindir}/ki7mt-lab-env
+%{_bindir}/ionis-db-init
+%{_bindir}/ionis-env
 %dir %{_datadir}/%{name}
 %dir %{_datadir}/%{name}/ddl
 %dir %{_datadir}/%{name}/scripts
@@ -72,6 +76,12 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/scripts/*.sh
 
 %changelog
+* Thu Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.0-1
+- Migrate to IONIS-AI organization (ionis-core)
+- Rename package: ki7mt-ai-lab-core → ionis-core
+- Rename scripts: ki7mt-lab-db-init → ionis-db-init, ki7mt-lab-env → ionis-env
+- Add Obsoletes/Provides for seamless upgrade from ki7mt-ai-lab-core
+
 * Tue Feb 11 2026 Greg Beam <ki7mt@yahoo.com> - 2.4.0-1
 - V20 production release
 - Add DDL files 16-28: validation, balloon, dxpedition, signatures v2,

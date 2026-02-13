@@ -26,7 +26,7 @@
 --                 Expected volume: ~107M rows per model version
 --                   56.6M RBN + 49M PSKR + 1M Contest
 --
---                 Populated by: tools/score_model.py (ki7mt-ai-lab-training)
+--                 Populated by: tools/score_model.py (ionis-training)
 --
 -- ==============================================================================
 

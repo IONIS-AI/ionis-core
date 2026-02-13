@@ -1,5 +1,5 @@
 -- ============================================================================
--- ki7mt-ai-lab-core: PSK Reporter Raw Spots Schema v1
+-- ionis-core: PSK Reporter Raw Spots Schema v1
 -- ============================================================================
 -- PSK Reporter MQTT reception reports: FT8/FT4/WSPR/JS8/CW spots from
 -- 27K+ active monitors worldwide. Collected via pskr-collector (MQTT

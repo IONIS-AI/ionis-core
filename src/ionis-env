@@ -1,9 +1,9 @@
 #!/bin/bash
 # ==============================================================================
-# Name..........: ki7mt-lab-env
+# Name..........: ionis-env
 # Version.......: @VERSION@
-# Purpose.......: Standardized Environment Variables for the AI Lab
-# Usage.........: source /usr/bin/ki7mt-lab-env
+# Purpose.......: Standardized Environment Variables for IONIS
+# Usage.........: source /usr/bin/ionis-env
 # ==============================================================================
 #
 # OVERRIDE PRIORITY (highest to lowest):
@@ -15,7 +15,7 @@
 #   optimal performance on RAID-0 NVMe arrays. Override via environment:
 #
 #   export CLICKHOUSE_DATA_DIR=/custom/path
-#   source /usr/bin/ki7mt-lab-env
+#   source /usr/bin/ionis-env
 #
 # ==============================================================================
 
@@ -61,7 +61,7 @@ export INGEST_BATCH_SIZE="${INGEST_BATCH_SIZE:-100000}"
 # INTERACTIVE SHELL MESSAGE
 # ==============================================================================
 if [[ $- == *i* ]]; then
-    printf "KI7MT AI Lab Environment (${VERSION}) Loaded.\n"
+    printf "IONIS Environment (${VERSION}) Loaded.\n"
     printf "  WSPR Data.......: %s\n" "$WSPR_DATA_DIR"
     printf "  Solar Data......: %s\n" "$SOLAR_DATA_DIR"
     printf "  ClickHouse Data.: %s\n" "$CLICKHOUSE_DATA_DIR"

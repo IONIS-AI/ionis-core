@@ -1,5 +1,5 @@
 -- ============================================================================
--- ki7mt-ai-lab-core: Step F — Aggregated WSPR Signatures
+-- ionis-core: Step F — Aggregated WSPR Signatures
 -- ============================================================================
 -- Reduces 10.8B individual WSPR spots into median-based physical buckets,
 -- stripping site-level noise (local QRM, antenna inefficiency, ground fading).
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS wspr.signatures_v1 (
     avg_azimuth  UInt16          COMMENT 'Average azimuth degrees'
 ) ENGINE = MergeTree()
 ORDER BY (band, hour, tx_grid_4, rx_grid_4)
-COMMENT 'ki7mt-ai-lab Step F: Aggregated WSPR signatures - noise rejection via median bucketing';
+COMMENT 'IONIS Step F: Aggregated WSPR signatures - noise rejection via median bucketing';
 
 -- ============================================================================
 -- Population: Run per-band to stay within memory limits.

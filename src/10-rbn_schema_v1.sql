@@ -1,5 +1,5 @@
 -- ============================================================================
--- ki7mt-ai-lab-core: RBN Raw Spots Schema v1
+-- ionis-core: RBN Raw Spots Schema v1
 -- ============================================================================
 -- Reverse Beacon Network bulk archive: ~2.2B CW/RTTY/PSK spots, 2009-present.
 -- Daily ZIPs from https://data.reversebeacon.net/rbn_history/

@@ -1,9 +1,9 @@
-# ki7mt-ai-lab-core
+# ionis-core
 
-**Core ClickHouse schemas and environment setup for the KI7MT AI Lab**
+**Core ClickHouse schemas and environment setup for the IONIS propagation analysis system**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![COPR](https://img.shields.io/badge/COPR-ki7mt%2Fai--lab-blue)](https://copr.fedorainfracloud.org/coprs/ki7mt/ai-lab/)
+[![COPR](https://img.shields.io/badge/COPR-ki7mt%2Fionis--ai-blue)](https://copr.fedorainfracloud.org/coprs/ki7mt/ionis-ai/)
 [![Platform: EL9](https://img.shields.io/badge/Platform-EL9-green.svg)](https://rockylinux.org/)
 
 ## Package Contents
@@ -11,11 +11,11 @@
 This package installs:
 
 ```text
-File                Path                               Description
-ki7mt-lab-db-init   /usr/bin/                          Database initialization script
-ki7mt-lab-env       /usr/bin/                          Environment variables setup
-*.sql (22 files)    /usr/share/ki7mt-ai-lab-core/ddl/  ClickHouse DDL schemas
-*.sh (7 files)      /usr/share/ki7mt-ai-lab-core/scripts/  Population scripts
+File                Path                            Description
+ionis-db-init      /usr/bin/                        Database initialization script
+ionis-env          /usr/bin/                        Environment variables setup
+*.sql (28 files)   /usr/share/ionis-core/ddl/       ClickHouse DDL schemas
+*.sh (10 files)    /usr/share/ionis-core/scripts/   Population scripts
 ```
 
 ### Database Schemas
@@ -44,6 +44,12 @@ DDL                                Database     Creates
 20-signatures_v2_terrestrial.sql   wspr         signatures_v2_terrestrial
 21-balloon_callsigns_v2.sql        wspr         balloon_callsigns_v2 (date-level)
 22-pskr_schema_v1.sql              pskr         bronze
+23-contest_signatures.sql          contest      signatures
+24-rbn_signatures.sql              rbn          signatures
+25-live_conditions.sql             wspr         live_conditions
+26-validation_model_results.sql    validation   model_results
+27-mode_thresholds.sql             validation   mode_thresholds
+28-pskr_ingest_log.sql             pskr         ingest_log
 ```
 
 ## Installation
@@ -52,19 +58,19 @@ DDL                                Database     Creates
 
 ```bash
 # Enable the repository
-sudo dnf copr enable ki7mt/ai-lab
+sudo dnf copr enable ki7mt/ionis-ai
 
 # Install
-sudo dnf install ki7mt-ai-lab-core
+sudo dnf install ionis-core
 ```
 
-### From Source (rpkg)
+### From Source
 
 ```bash
-git clone https://github.com/KI7MT/ki7mt-ai-lab.git
-cd ki7mt-ai-lab/ki7mt-ai-lab-core
-rpkg local
-sudo dnf install ./noarch/*.rpm
+git clone https://github.com/IONIS-AI/ionis-core.git
+cd ionis-core
+make build
+sudo make install
 ```
 
 ## Usage
@@ -72,21 +78,15 @@ sudo dnf install ./noarch/*.rpm
 ### 1. Start ClickHouse
 
 ```bash
-# Install ClickHouse if not already installed
 sudo dnf install -y clickhouse-server clickhouse-client
-
-# Start the service
 sudo systemctl enable --now clickhouse-server
-
-# Verify it's running
 clickhouse-client --query="SELECT version()"
 ```
 
 ### 2. Initialize the Database
 
 ```bash
-# Run the initialization script
-ki7mt-lab-db-init
+ionis-db-init
 ```
 
 **Options:**
@@ -94,35 +94,13 @@ ki7mt-lab-db-init
 --dry-run        Show what would be done without executing
 --force          Drop and recreate tables (DESTROYS DATA)
 --auto-confirm   Skip confirmation prompts (for automation)
-```
-
-**Example output:**
-```
-[INIT] Starting ki7mt-ai-lab-core v1.0.4 Database Setup...
-[INFO] DDL Directory: /usr/share/ki7mt-ai-lab-core/ddl
-[CHECK] Verifying ClickHouse connectivity... [OK]
-
-[STATUS] Current database state:
-  Database 'wspr': MISSING (will be created)
-
-[APPLY] Processing DDL files...
-  01-wspr_schema.sql ... [OK]
-  02-solar_indices.sql ... [OK]
-  03-solar_silver.sql ... [OK]
-  04-data_mgmt.sql ... [OK]
-  05-geo_functions.sql ... [OK]
-
-[VALIDATE] Verifying schema installation...
-  wspr.bronze: VALID (15 columns)
-
-[DONE] Database setup completed successfully.
+--stamp-version  Record installed version in data_mgmt.lab_versions
 ```
 
 ### 3. Load Environment Variables
 
 ```bash
-# Source the environment (add to ~/.bashrc for persistence)
-source /usr/bin/ki7mt-lab-env
+source /usr/bin/ionis-env
 ```
 
 **Variables exported:**
@@ -130,139 +108,21 @@ source /usr/bin/ki7mt-lab-env
 CLICKHOUSE_HOST=localhost
 CLICKHOUSE_PORT=9000
 CLICKHOUSE_DB=wspr
-WSPR_DATA_DIR=/mnt/ai-stack/wspr-data
-SOLAR_DATA_DIR=/mnt/ai-stack/solar-data
-CLICKHOUSE_DATA_DIR=/mnt/ai-stack/clickhouse
-DDL_PATH=/usr/share/ki7mt-ai-lab-core/ddl
+DDL_PATH=/usr/share/ionis-core/ddl
 ```
 
-**Override defaults before sourcing:**
-```bash
-export WSPR_DATA_DIR=/var/lib/wspr
-export CLICKHOUSE_DATA_DIR=/var/lib/clickhouse
-source /usr/bin/ki7mt-lab-env
-```
+## Upgrading from ki7mt-ai-lab-core
 
-## Testing Locally
+The `ionis-core` package includes `Obsoletes: ki7mt-ai-lab-core < 3.0.0`, so a standard `dnf upgrade` will seamlessly replace the old package. Scripts are renamed:
 
-### Verify Installation
+- `ki7mt-lab-db-init` -> `ionis-db-init`
+- `ki7mt-lab-env` -> `ionis-env`
+
+## Testing
 
 ```bash
-# Check package is installed
-rpm -q ki7mt-ai-lab-core
-
-# Check files are in place
-ls -la /usr/bin/ki7mt-lab-*
-ls -la /usr/share/ki7mt-ai-lab-core/ddl/
-```
-
-### Verify Database
-
-```bash
-# Check database exists
-clickhouse-client --query="SHOW DATABASES" | grep wspr
-
-# Check tables were created
-clickhouse-client --query="SHOW TABLES FROM wspr"
-
-# Verify bronze schema (should show 15 columns)
-clickhouse-client --query="DESCRIBE TABLE wspr.bronze"
-
-# Check table is empty but ready
-clickhouse-client --query="SELECT count() FROM wspr.bronze"
-```
-
-### Test Idempotency
-
-The init script is idempotent - running it multiple times is safe:
-
-```bash
-# Run again - should report tables exist
-ki7mt-lab-db-init
-
-# Expected output:
-# [STATUS] Current database state:
-#   Database 'wspr': EXISTS
-#     Table 'bronze': EXISTS (engine=MergeTree, cols=15, rows=0)
-```
-
-### Test Environment Script
-
-```bash
-# Source and check variables
-source /usr/bin/ki7mt-lab-env
-echo "DDL Path: $DDL_PATH"
-echo "WSPR Data: $WSPR_DATA_DIR"
-
-# Verify DDL files are accessible
-ls $DDL_PATH
-```
-
-### Test with Sample Data
-
-```bash
-# Insert a test record
-clickhouse-client --query="
-INSERT INTO wspr.bronze VALUES (
-    1,                          -- id
-    '2024-01-15 12:30:00',      -- timestamp
-    'KI7MT',                    -- reporter
-    'DN26',                     -- reporter_grid
-    -15,                        -- snr
-    14097100,                   -- frequency (Hz)
-    'W1AW',                     -- callsign
-    'FN31',                     -- grid
-    37,                         -- power (dBm)
-    0,                          -- drift
-    3842,                       -- distance (km)
-    75,                         -- azimuth
-    20,                         -- band
-    '2.6.1',                    -- version
-    0                           -- code
-)"
-
-# Query it back
-clickhouse-client --query="
-SELECT callsign, reporter, distance, snr
-FROM wspr.bronze
-WHERE id = 1"
-
-# Clean up test data
-clickhouse-client --query="ALTER TABLE wspr.bronze DELETE WHERE id = 1"
-```
-
----
-
-## Uninstall
-
-```bash
-# Remove package (keeps database)
-sudo dnf remove ki7mt-ai-lab-core
-
-# To also remove the database:
-clickhouse-client --query="DROP DATABASE IF EXISTS wspr"
-```
-
----
-
-## Development
-
-### Version Management
-
-```bash
-# Bump version and create git tag
-./bump-version 1.1.0
-
-# Push to trigger COPR rebuild
-git push && git push --tags
-```
-
-### Build Locally
-
-```bash
-rpkg local                    # Build RPM
-rpkg lint                     # Check spec file
-rpkg srpm                     # Create source RPM
+make build    # Process templates
+make test     # Run 7 verification tests
 ```
 
 ---
@@ -277,5 +137,6 @@ Greg Beam, KI7MT
 
 ## Links
 
-- **COPR:** https://copr.fedorainfracloud.org/coprs/ki7mt/ai-lab/
-- **Issues:** https://github.com/KI7MT/ki7mt-ai-lab/issues
+- **GitHub:** https://github.com/IONIS-AI/ionis-core
+- **COPR:** https://copr.fedorainfracloud.org/coprs/ki7mt/ionis-ai/
+- **Issues:** https://github.com/IONIS-AI/ionis-core/issues

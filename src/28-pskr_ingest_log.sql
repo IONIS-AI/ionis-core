@@ -1,5 +1,5 @@
 -- ============================================================================
--- ki7mt-ai-lab-core: PSK Reporter Ingest Watermark Table
+-- ionis-core: PSK Reporter Ingest Watermark Table
 -- ============================================================================
 -- Tracks which JSONL files have been loaded into pskr.bronze by pskr-ingest.
 -- Each row represents one gzip JSONL file from the pskr-collector output.

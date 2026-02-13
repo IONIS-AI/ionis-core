@@ -1,4 +1,4 @@
-# Makefile for ki7mt-ai-lab-core
+# Makefile for ionis-core
 #
 # Local development only - does not affect COPR/rpkg builds
 #
@@ -13,7 +13,7 @@ SHELL := /bin/bash
 .PHONY: help build install uninstall test distclean
 
 # Package metadata
-NAME     := ki7mt-ai-lab-core
+NAME     := ionis-core
 VERSION  := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
 PREFIX   := /usr
 BINDIR   := $(PREFIX)/bin
@@ -23,7 +23,7 @@ DATADIR  := $(PREFIX)/share/$(NAME)/ddl
 BUILDDIR := build
 
 # Source files
-SCRIPTS  := src/ki7mt-lab-db-init src/ki7mt-lab-env
+SCRIPTS  := src/ionis-db-init src/ionis-env
 SCHEMAS  := $(wildcard src/*.sql)
 
 # Default target
@@ -87,13 +87,13 @@ install: build
 	install -m 755 $(BUILDDIR)/bin/* $(DESTDIR)$(BINDIR)/
 	install -m 644 $(BUILDDIR)/ddl/*.sql $(DESTDIR)$(DATADIR)/
 	@printf "Installed:\n"
-	@printf "  Scripts: $(DESTDIR)$(BINDIR)/ki7mt-lab-*\n"
+	@printf "  Scripts: $(DESTDIR)$(BINDIR)/ionis-*\n"
 	@printf "  Schemas: $(DESTDIR)$(DATADIR)/*.sql\n"
 
 uninstall:
 	@printf "Uninstalling from $(DESTDIR)$(PREFIX)...\n"
-	rm -f $(DESTDIR)$(BINDIR)/ki7mt-lab-db-init
-	rm -f $(DESTDIR)$(BINDIR)/ki7mt-lab-env
+	rm -f $(DESTDIR)$(BINDIR)/ionis-db-init
+	rm -f $(DESTDIR)$(BINDIR)/ionis-env
 	rm -rf $(DESTDIR)$(PREFIX)/share/$(NAME)
 	@printf "Uninstall complete.\n"
 
@@ -102,26 +102,26 @@ test: build
 	@printf "\n"
 	@# Test 1: Check build outputs exist
 	@printf "[TEST] Build outputs exist... "
-	@test -f $(BUILDDIR)/bin/ki7mt-lab-db-init && \
-	 test -f $(BUILDDIR)/bin/ki7mt-lab-env && \
-	 test -f $(BUILDDIR)/ddl/01-wspr_schema.sql && \
+	@test -f $(BUILDDIR)/bin/ionis-db-init && \
+	 test -f $(BUILDDIR)/bin/ionis-env && \
+	 test -f $(BUILDDIR)/ddl/01-wspr_schema_v2.sql && \
 	 printf "PASS\n" || { printf "FAIL\n"; exit 1; }
 	@# Test 2: Check version substitution
 	@printf "[TEST] Version substitution... "
-	@grep -q 'VERSION="$(VERSION)"' $(BUILDDIR)/bin/ki7mt-lab-db-init && \
+	@grep -q 'VERSION="$(VERSION)"' $(BUILDDIR)/bin/ionis-db-init && \
 	 printf "PASS\n" || { printf "FAIL\n"; exit 1; }
 	@# Test 3: Check program name substitution
 	@printf "[TEST] Program name substitution... "
-	@grep -q 'PROGRAM="$(NAME)"' $(BUILDDIR)/bin/ki7mt-lab-db-init && \
+	@grep -q 'PROGRAM="$(NAME)"' $(BUILDDIR)/bin/ionis-db-init && \
 	 printf "PASS\n" || { printf "FAIL\n"; exit 1; }
 	@# Test 4: Check DDL path substitution
 	@printf "[TEST] DDL path in scripts... "
-	@grep -q '/usr/share/$(NAME)/ddl' $(BUILDDIR)/bin/ki7mt-lab-db-init && \
+	@grep -q '/usr/share/$(NAME)/ddl' $(BUILDDIR)/bin/ionis-db-init && \
 	 printf "PASS\n" || { printf "FAIL\n"; exit 1; }
 	@# Test 5: Check scripts are executable
 	@printf "[TEST] Scripts are executable... "
-	@test -x $(BUILDDIR)/bin/ki7mt-lab-db-init && \
-	 test -x $(BUILDDIR)/bin/ki7mt-lab-env && \
+	@test -x $(BUILDDIR)/bin/ionis-db-init && \
+	 test -x $(BUILDDIR)/bin/ionis-env && \
 	 printf "PASS\n" || { printf "FAIL\n"; exit 1; }
 	@# Test 6: Check SQL files have no unsubstituted placeholders
 	@printf "[TEST] No unsubstituted placeholders in SQL... "
@@ -129,8 +129,8 @@ test: build
 	 printf "PASS\n" || { printf "FAIL\n"; exit 1; }
 	@# Test 7: Syntax check scripts (bash -n)
 	@printf "[TEST] Script syntax valid... "
-	@bash -n $(BUILDDIR)/bin/ki7mt-lab-db-init && \
-	 bash -n $(BUILDDIR)/bin/ki7mt-lab-env && \
+	@bash -n $(BUILDDIR)/bin/ionis-db-init && \
+	 bash -n $(BUILDDIR)/bin/ionis-env && \
 	 printf "PASS\n" || { printf "FAIL\n"; exit 1; }
 	@printf "\nAll tests passed.\n"
 

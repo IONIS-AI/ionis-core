@@ -1,10 +1,10 @@
 #!/bin/bash
 # ==============================================================================
-# Name..........: ki7mt-lab-db-init
+# Name..........: ionis-db-init
 # Version.......: @VERSION@
-# Purpose.......: Initialize ClickHouse database and schemas for the AI Lab
+# Purpose.......: Initialize ClickHouse database and schemas for IONIS
 # Dependencies..: clickhouse-client
-# Usage.........: ki7mt-lab-db-init [--auto-confirm] [--force] [--dry-run] [--stamp-version]
+# Usage.........: ionis-db-init [--auto-confirm] [--force] [--dry-run] [--stamp-version]
 # ==============================================================================
 #
 # IDEMPOTENT DESIGN:
@@ -47,7 +47,7 @@ while [ "$#" -gt 0 ]; do
         --dry-run)       DRY_RUN=true ;;
         --stamp-version) STAMP_VERSION=true ;;
         -h|--help)
-            printf "Usage: ki7mt-lab-db-init [OPTIONS]\n"
+            printf "Usage: ionis-db-init [OPTIONS]\n"
             printf "Options:\n"
             printf "  --auto-confirm   Skip confirmation prompts\n"
             printf "  --force          Recreate tables (DESTROYS DATA)\n"
@@ -65,8 +65,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 # --- Source environment (if available) ---
-if [ -f "/usr/bin/ki7mt-lab-env" ]; then
-    . /usr/bin/ki7mt-lab-env
+if [ -f "/usr/bin/ionis-env" ]; then
+    . /usr/bin/ionis-env
 fi
 
 # ==============================================================================
@@ -126,7 +126,7 @@ stamp_version() {
     fi
 
     # Insert version record
-    local query="INSERT INTO data_mgmt.lab_versions (component, version, notes) VALUES ('${component}', '${version}', 'Stamped by ki7mt-lab-db-init')"
+    local query="INSERT INTO data_mgmt.lab_versions (component, version, notes) VALUES ('${component}', '${version}', 'Stamped by ionis-db-init')"
 
     if $DRY_RUN; then
         printf "  ${YELLOW}[DRY-RUN]${NC} Would execute: %s\n" "$query"

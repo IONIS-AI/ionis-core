@@ -18,7 +18,7 @@
 --
 --                 Population:
 --                   quality_test_paths  — populate_quality_test_paths.sh
---                   quality_test_voacap — voacap_quality_test.py (ki7mt-ai-lab-training)
+--                   quality_test_voacap — voacap_quality_test.py (ionis-training)
 --
 -- ==============================================================================
 
