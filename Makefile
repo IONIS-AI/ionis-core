@@ -18,6 +18,7 @@ VERSION  := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
 PREFIX   := /usr
 BINDIR   := $(PREFIX)/bin
 DATADIR  := $(PREFIX)/share/$(NAME)/ddl
+PKGDATADIR := $(PREFIX)/share/$(NAME)/data
 
 # Build directory
 BUILDDIR := build
@@ -84,11 +85,14 @@ install: build
 	@printf "Installing to $(DESTDIR)$(PREFIX)...\n"
 	install -d $(DESTDIR)$(BINDIR)
 	install -d $(DESTDIR)$(DATADIR)
+	install -d $(DESTDIR)$(PKGDATADIR)
 	install -m 755 $(BUILDDIR)/bin/* $(DESTDIR)$(BINDIR)/
 	install -m 644 $(BUILDDIR)/ddl/*.sql $(DESTDIR)$(DATADIR)/
+	install -m 644 data/*.tsv $(DESTDIR)$(PKGDATADIR)/
 	@printf "Installed:\n"
 	@printf "  Scripts: $(DESTDIR)$(BINDIR)/ionis-*\n"
 	@printf "  Schemas: $(DESTDIR)$(DATADIR)/*.sql\n"
+	@printf "  Data:    $(DESTDIR)$(PKGDATADIR)/*.tsv\n"
 
 uninstall:
 	@printf "Uninstalling from $(DESTDIR)$(PREFIX)...\n"

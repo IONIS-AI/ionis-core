@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        3.0.2
+Version:        3.0.3
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -34,6 +34,7 @@ validation databases.
 install -d %{buildroot}%{_bindir}
 install -d %{buildroot}%{_datadir}/%{name}/ddl
 install -d %{buildroot}%{_datadir}/%{name}/scripts
+install -d %{buildroot}%{_datadir}/%{name}/data
 
 # Install and process scripts (substitute @PROGRAM@ and @VERSION@)
 for script in ionis-db-init ionis-env; do
@@ -57,6 +58,9 @@ for sh in scripts/populate_*.sh; do
     install -m 755 "$sh" %{buildroot}%{_datadir}/%{name}/scripts/
 done
 
+# Install static data files
+install -m 644 data/*.tsv %{buildroot}%{_datadir}/%{name}/data/
+
 %post
 echo "------------------------------------------------------------"
 echo " IONIS Core v%{version} installed successfully."
@@ -72,10 +76,18 @@ echo "------------------------------------------------------------"
 %dir %{_datadir}/%{name}
 %dir %{_datadir}/%{name}/ddl
 %dir %{_datadir}/%{name}/scripts
+%dir %{_datadir}/%{name}/data
 %{_datadir}/%{name}/ddl/*.sql
 %{_datadir}/%{name}/scripts/*.sh
+%{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Sat Feb 14 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.3-1
+- Add dxpedition population scripts (catalog + paths/signatures)
+- Add static data file: data/dxpedition-catalog.tsv (332 GDXF entries)
+- Install data/ directory to /usr/share/ionis-core/data/
+- Population scripts: 10 → 12
+
 * Thu Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.2-1
 - Fix populate_callsign_grid.sh: add PSKR sender/receiver enrichment
 - Fix populate_balloon_callsigns.sh: add join_use_nulls=1 for type2 detection
