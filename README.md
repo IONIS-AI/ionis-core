@@ -14,8 +14,8 @@ This package installs:
 File                Path                            Description
 ionis-db-init      /usr/bin/                        Database initialization script
 ionis-env          /usr/bin/                        Environment variables setup
-*.sql (28 files)   /usr/share/ionis-core/ddl/       ClickHouse DDL schemas
-*.sh (10 files)    /usr/share/ionis-core/scripts/   Population scripts
+*.sql (29 files)   /usr/share/ionis-core/ddl/       ClickHouse DDL schemas
+*.sh (12 files)    /usr/share/ionis-core/scripts/   Population scripts
 ```
 
 ### Database Schemas
@@ -50,6 +50,7 @@ DDL                                Database     Creates
 26-validation_model_results.sql    validation   model_results
 27-mode_thresholds.sql             validation   mode_thresholds
 28-pskr_ingest_log.sql             pskr         ingest_log
+29-rbn_dxpedition_signatures.sql   rbn          dxpedition_signatures
 ```
 
 ## Installation
