@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE) build
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/ionis-core
+	install -d $(CURDIR)/debian/ionis-core/usr/share/ionis-core/scripts
+	install -m 755 scripts/*.sh $(CURDIR)/debian/ionis-core/usr/share/ionis-core/scripts/
+
+override_dh_auto_test:
+	$(MAKE) test

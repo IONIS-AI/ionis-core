@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    echo ""
+    echo "=== ionis-core installed ==="
+    echo "Run 'ionis-db-init --stamp-version' to initialize the database."
+    echo ""
+fi
+
+#DEBHELPER#
+
+exit 0
