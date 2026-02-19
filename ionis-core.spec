@@ -19,7 +19,7 @@ Requires:       clickhouse-client >= 23.0
 %description
 Core database schemas and initialization scripts for the IONIS
 (Ionospheric Neural Inference System) propagation analysis project.
-Includes 29 ClickHouse DDL schemas optimized for 10+ billion rows of
+Includes 32 ClickHouse DDL schemas optimized for 10+ billion rows of
 propagation data across WSPR, RBN, contest, PSK Reporter, solar, and
 validation databases.
 
@@ -82,6 +82,18 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Thu Feb 19 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.6-1
+- Add 3 ingest_log watermark DDL files (rbn, wspr, contest)
+- Standardize incremental ingest tracking across all data sources
+- DDL schemas: 29 → 32
+
+* Mon Feb 17 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.5-1
+- Add Debian packaging for Launchpad PPA (debian/ directory)
+- Fix day-of-week in debian/changelog
+
+* Mon Feb 17 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.4-1
+- Fix README: DDL count (29), script count (12), add DDL #29
+
 * Sat Feb 14 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.3-1
 - Add dxpedition population scripts (catalog + paths/signatures)
 - Add static data file: data/dxpedition-catalog.tsv (332 GDXF entries)
