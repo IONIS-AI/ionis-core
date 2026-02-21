@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        3.2.0
+Version:        3.3.0
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -82,11 +82,11 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
-* Fri Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.8-1
+* Sat Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.8-1
 - Add solar.dscovr DDL: DSCOVR L1 solar wind data (Bz, Bt, speed, density, temp)
 - DDL schemas: 33 → 34
 
-* Fri Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.7-1
+* Sat Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.7-1
 - Add training.runs and training.epochs DDL (training run audit trail)
 - Add populate_training_runs.sh backfill script (V20, V21-alpha, V21-beta)
 - DDL schemas: 32 → 33, population scripts: 12 → 13
@@ -96,11 +96,11 @@ echo "------------------------------------------------------------"
 - Standardize incremental ingest tracking across all data sources
 - DDL schemas: 29 → 32
 
-* Mon Feb 17 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.5-1
+* Tue Feb 17 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.5-1
 - Add Debian packaging for Launchpad PPA (debian/ directory)
 - Fix day-of-week in debian/changelog
 
-* Mon Feb 17 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.4-1
+* Tue Feb 17 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.4-1
 - Fix README: DDL count (29), script count (12), add DDL #29
 
 * Sat Feb 14 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.3-1
@@ -109,7 +109,7 @@ echo "------------------------------------------------------------"
 - Install data/ directory to /usr/share/ionis-core/data/
 - Population scripts: 10 → 12
 
-* Thu Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.2-1
+* Fri Feb 13 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.2-1
 - Fix populate_callsign_grid.sh: add PSKR sender/receiver enrichment
 - Fix populate_balloon_callsigns.sh: add join_use_nulls=1 for type2 detection
 - Fix populate_quality_test_paths.sh: toUInt8 → reinterpretAsUInt8
