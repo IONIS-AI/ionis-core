@@ -19,7 +19,7 @@ Requires:       clickhouse-client >= 23.0
 %description
 Core database schemas and initialization scripts for the IONIS
 (Ionospheric Neural Inference System) propagation analysis project.
-Includes 33 ClickHouse DDL schemas optimized for 10+ billion rows of
+Includes 34 ClickHouse DDL schemas optimized for 10+ billion rows of
 propagation data across WSPR, RBN, contest, PSK Reporter, solar,
 training, and validation databases.
 
@@ -82,6 +82,10 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Fri Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.8-1
+- Add solar.dscovr DDL: DSCOVR L1 solar wind data (Bz, Bt, speed, density, temp)
+- DDL schemas: 33 → 34
+
 * Fri Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.7-1
 - Add training.runs and training.epochs DDL (training run audit trail)
 - Add populate_training_runs.sh backfill script (V20, V21-alpha, V21-beta)
