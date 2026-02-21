@@ -19,9 +19,9 @@ Requires:       clickhouse-client >= 23.0
 %description
 Core database schemas and initialization scripts for the IONIS
 (Ionospheric Neural Inference System) propagation analysis project.
-Includes 32 ClickHouse DDL schemas optimized for 10+ billion rows of
-propagation data across WSPR, RBN, contest, PSK Reporter, solar, and
-validation databases.
+Includes 33 ClickHouse DDL schemas optimized for 10+ billion rows of
+propagation data across WSPR, RBN, contest, PSK Reporter, solar,
+training, and validation databases.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -82,6 +82,11 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Fri Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.7-1
+- Add training.runs and training.epochs DDL (training run audit trail)
+- Add populate_training_runs.sh backfill script (V20, V21-alpha, V21-beta)
+- DDL schemas: 32 → 33, population scripts: 12 → 13
+
 * Thu Feb 19 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.6-1
 - Add 3 ingest_log watermark DDL files (rbn, wspr, contest)
 - Standardize incremental ingest tracking across all data sources
