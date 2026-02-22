@@ -19,7 +19,7 @@ Requires:       clickhouse-client >= 23.0
 %description
 Core database schemas and initialization scripts for the IONIS
 (Ionospheric Neural Inference System) propagation analysis project.
-Includes 34 ClickHouse DDL schemas optimized for 10+ billion rows of
+Includes 35 ClickHouse DDL schemas optimized for 10+ billion rows of
 propagation data across WSPR, RBN, contest, PSK Reporter, solar,
 training, and validation databases.
 
@@ -57,6 +57,9 @@ done
 for sh in scripts/populate_*.sh; do
     install -m 755 "$sh" %{buildroot}%{_datadir}/%{name}/scripts/
 done
+for py in scripts/populate_*.py; do
+    install -m 755 "$py" %{buildroot}%{_datadir}/%{name}/scripts/
+done
 
 # Install static data files
 install -m 644 data/*.tsv %{buildroot}%{_datadir}/%{name}/data/
@@ -79,9 +82,15 @@ echo "------------------------------------------------------------"
 %dir %{_datadir}/%{name}/data
 %{_datadir}/%{name}/ddl/*.sql
 %{_datadir}/%{name}/scripts/*.sh
+%{_datadir}/%{name}/scripts/*.py
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Sun Feb 22 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.9-1
+- Add solar.iri_lookup DDL: IRI-2020 ionospheric parameter lookup table
+- Add populate_iri_lookup.py: pre-compute foF2, hmF2, foE for V23 features
+- DDL schemas: 34 → 35, population scripts: 13 → 14
+
 * Sat Feb 21 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.8-1
 - Add solar.dscovr DDL: DSCOVR L1 solar wind data (Bz, Bt, speed, density, temp)
 - DDL schemas: 33 → 34
