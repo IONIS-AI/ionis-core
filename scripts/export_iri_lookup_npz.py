@@ -42,7 +42,8 @@ import numpy as np
 
 
 # SFI buckets — must match populate_iri_lookup.py exactly
-SFI_BUCKETS = list(range(70, 250, 10))  # 70, 80, ..., 240 (18 buckets)
+# Default: 18 buckets (step 10). Override with --sfi-step 5 for 35 buckets.
+SFI_BUCKETS = list(range(70, 241, 10))  # 70, 80, ..., 240 (18 buckets)
 SFI_TO_IDX = {sfi: i for i, sfi in enumerate(SFI_BUCKETS)}
 
 
@@ -61,6 +62,8 @@ def main():
     parser.add_argument('--output', type=str,
                         default='/mnt/ai-stack/ionis-ai/iri_lookup.npz',
                         help='Output .npz path (default: /mnt/ai-stack/ionis-ai/iri_lookup.npz)')
+    parser.add_argument('--sfi-step', type=int, default=10,
+                        help='SFI bucket step size (default: 10, use 5 for 35-bucket atlas)')
     parser.add_argument('--host', type=str,
                         default=os.environ.get('CH_HOST', 'localhost'),
                         help='ClickHouse host')
@@ -68,6 +71,11 @@ def main():
                         default=int(os.environ.get('CH_PORT', '8123')),
                         help='ClickHouse HTTP port')
     args = parser.parse_args()
+
+    # Override SFI bucket list
+    global SFI_BUCKETS, SFI_TO_IDX
+    SFI_BUCKETS = list(range(70, 241, args.sfi_step))
+    SFI_TO_IDX = {sfi: i for i, sfi in enumerate(SFI_BUCKETS)}
 
     import clickhouse_connect
     client = clickhouse_connect.get_client(host=args.host, port=args.port)

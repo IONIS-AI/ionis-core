@@ -39,7 +39,7 @@ import numpy as np
 # Constants
 # ---------------------------------------------------------------------------
 
-SFI_BUCKETS = list(range(70, 250, 10))  # 70, 80, ..., 240 (18 buckets)
+SFI_BUCKETS = list(range(70, 241, 10))   # 70, 80, ..., 240 (18 buckets, default)
 HOURS = list(range(24))                  # 0-23
 MONTHS = list(range(1, 13))              # 1-12
 
@@ -181,9 +181,20 @@ def main():
     parser.add_argument('--port', type=int,
                         default=int(os.environ.get('CH_PORT', '8123')),
                         help='ClickHouse HTTP port (default: $CH_PORT or 8123)')
+    parser.add_argument('--sfi-step', type=int, default=10,
+                        help='SFI bucket step size (default: 10, use 5 for 35-bucket atlas)')
+    parser.add_argument('--sfi-values', type=str, default=None,
+                        help='Explicit comma-separated SFI bucket values (overrides --sfi-step)')
     parser.add_argument('--truncate', action='store_true',
                         help='TRUNCATE table before populating')
     args = parser.parse_args()
+
+    # Override global SFI_BUCKETS before forking workers
+    global SFI_BUCKETS
+    if args.sfi_values:
+        SFI_BUCKETS = [int(x) for x in args.sfi_values.split(',')]
+    else:
+        SFI_BUCKETS = list(range(70, 241, args.sfi_step))
 
     import clickhouse_connect
     client = clickhouse_connect.get_client(host=args.host, port=args.port)
