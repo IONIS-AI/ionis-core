@@ -19,7 +19,7 @@ Requires:       clickhouse-client >= 23.0
 %description
 Core database schemas and initialization scripts for the IONIS
 (Ionospheric Neural Inference System) propagation analysis project.
-Includes 35 ClickHouse DDL schemas optimized for 10+ billion rows of
+Includes 36 ClickHouse DDL schemas optimized for 10+ billion rows of
 propagation data across WSPR, RBN, contest, PSK Reporter, solar,
 training, and validation databases.
 
@@ -86,6 +86,11 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Mon Feb 24 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.10-1
+- Add validation.dxpedition_contest_paths DDL: DXpedition-contest path observations
+- Add populate_dxpedition_contest_paths.sh: 81.5K observations to 49 DXCC entities
+- DDL schemas: 35 → 36, population scripts: 14 → 15
+
 * Sun Feb 22 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.9-1
 - Add solar.iri_lookup DDL: IRI-2020 ionospheric parameter lookup table
 - Add populate_iri_lookup.py: pre-compute foF2, hmF2, foE for V23 features
