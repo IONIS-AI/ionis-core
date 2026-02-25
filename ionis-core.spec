@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        3.3.0
+Version:        4.0.0
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -86,6 +86,9 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Feb 25 2026 Greg Beam <ki7mt@yahoo.com> - 4.0.0-1
+- Align version across all IONIS packages at 4.0.0 (Phase 4.0 release)
+
 * Tue Feb 24 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.10-1
 - Add validation.dxpedition_contest_paths DDL: DXpedition-contest path observations
 - Add populate_dxpedition_contest_paths.sh: 81.5K observations to 49 DXCC entities
