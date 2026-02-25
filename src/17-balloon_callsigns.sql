@@ -43,7 +43,7 @@
 --                    non-allocated ITU blocks, or Q-prefix (ITU reserved for
 --                    Q-codes). These cannot be real amateur callsigns.
 --
---                 Physics rationale (Gemini Pro velocity tiers):
+--                 Physics rationale (Einstein velocity tiers):
 --                   Fixed Station:   1 grid/day
 --                   Maritime:        < 10 grids/day
 --                   Ground Vehicle:  < 25 grids/day

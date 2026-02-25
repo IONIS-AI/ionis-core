@@ -16,7 +16,7 @@
 #                         verified operators). These are WSPR Type 2 GPS
 #                         telemetry encodings — synthetic, not real operators.
 #
-# Physics rationale (Gemini Pro velocity framework):
+# Physics rationale (Einstein velocity framework):
 #   A 4-char Maidenhead grid is ~200 km x 100 km. Crossing 45 grids/day
 #   implies 9,000+ km of travel — only possible at high altitude (balloons).
 #
