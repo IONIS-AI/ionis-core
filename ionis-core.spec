@@ -86,7 +86,7 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
-* Mon Feb 24 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.10-1
+* Tue Feb 24 2026 Greg Beam <ki7mt@yahoo.com> - 3.0.10-1
 - Add validation.dxpedition_contest_paths DDL: DXpedition-contest path observations
 - Add populate_dxpedition_contest_paths.sh: 81.5K observations to 49 DXCC entities
 - DDL schemas: 35 → 36, population scripts: 14 → 15
