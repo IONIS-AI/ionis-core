@@ -1,6 +1,6 @@
 Name:           ionis-core
-Version:        4.0.0
-Release:        2%{?dist}
+Version:        4.0.1
+Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
 License:        GPL-3.0-or-later
@@ -86,6 +86,9 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Feb 25 2026 Greg Beam <ki7mt@yahoo.com> - 4.0.1-1
+- Documentation update only (no schema changes)
+
 * Wed Feb 25 2026 Greg Beam <ki7mt@yahoo.com> - 4.0.0-2
 - Remove Debian packaging (Launchpad cannot build the full stack)
 
