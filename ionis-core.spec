@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.1
+Version:        4.0.2
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -86,6 +86,23 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Sep 09 2026 Greg Beam <ki7mt@yahoo.com> - 4.0.2-1
+- 25-live_conditions.sql: wspr.live_conditions changes from ENGINE = Memory to a durable
+  append-only MergeTree (ORDER BY updated_at, TTL 2 years). Memory meant the table was lost
+  on every ClickHouse restart, and it did not come back stale -- it came back EMPTY, which
+  ionis-hamstats turned into an invented SFI 100 / Kp 3 for the IONIS model and published as
+  current conditions. Durability is what closes that window.
+- 25-live_conditions.sql: adds sfi_observed_at, kp_observed_at and updated_at. The writer has
+  emitted these since ionis-apps 4.0.6; the DDL had drifted behind it.
+- NOTE: this DDL alone does NOT convert an existing host. Every statement here is
+  CREATE TABLE IF NOT EXISTS, which cannot change the engine of a table that already exists,
+  so ionis-db-init is a no-op against a live Memory table. The conversion is performed by
+  solar-live-update (ionis-apps >= 4.0.7), which probes system.tables and recreates the table
+  when it finds any engine other than MergeTree. This file is the schema of record and what a
+  fresh install gets.
+- Readers must now ORDER BY updated_at DESC LIMIT 1; a bare LIMIT 1 was unambiguous against a
+  single-row Memory table and returns an arbitrary row against history. ionis-hamstats and
+  ionis-docs are updated.
 * Wed Feb 25 2026 Greg Beam <ki7mt@yahoo.com> - 4.0.1-1
 - Documentation update only (no schema changes)
 
