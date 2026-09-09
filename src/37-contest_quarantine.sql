@@ -28,9 +28,21 @@
 -- stays clean while the data stays recoverable. A row misjudged by the rule can
 -- be replayed; a row dropped at ingest cannot. Re-admit with:
 --
---   INSERT INTO contest.bronze SELECT timestamp, frequency, band, mode, call_1,
+--   INSERT INTO contest.bronze SELECT parseDateTimeBestEffort(timestamp),
+--     frequency, band, mode, call_1,
 --     call_2, rst_sent, exch_sent, rst_rcvd, exch_rcvd, contest, source
 --   FROM contest.quarantine WHERE source = '...';
+--
+-- WHY timestamp IS A STRING
+--
+-- ClickHouse DateTime spans 1970-01-01 to 2106-02-07. Eight rows already in
+-- contest.bronze fall outside that window, and a corrupted Cabrillo year can
+-- land anywhere. Storing the suspect value in DateTime would clamp or wrap the
+-- exact thing this table exists to preserve, which would make the evidence
+-- agree with the defect. Text holds whatever was parsed, intact.
+--
+-- Replay converts on the way out:
+--   parseDateTimeBestEffortOrNull(timestamp)
 --
 -- Expected population on first full replay: ~536,022 rows of 234M (0.229%).
 
