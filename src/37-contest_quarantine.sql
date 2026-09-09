@@ -49,7 +49,7 @@
 CREATE DATABASE IF NOT EXISTS contest;
 
 CREATE TABLE IF NOT EXISTS contest.quarantine (
-    timestamp     DateTime                COMMENT 'QSO timestamp UTC, as parsed — may be wrong, that is why it is here',
+    timestamp     String                COMMENT 'QSO timestamp as parsed, RFC3339 text - NOT DateTime, see note',
     frequency     UInt32                  COMMENT 'Frequency kHz',
     band          Int32                   COMMENT 'ADIF band ID',
     mode          LowCardinality(String)  COMMENT 'CW, PH, RY, DG, FM',
