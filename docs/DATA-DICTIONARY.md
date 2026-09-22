@@ -21,6 +21,47 @@ Verified against `10.60.1.1:9000` on 2026-09-22. Row counts move; lineage does n
 
 ---
 
+## 0. Two sources of truth, and the layers between them
+
+**Judge, 2026-09-22.** This is the default shape for every table unless a specific use case
+does not fit it.
+
+| | |
+|---|---|
+| **archive side SOT** | the files on disk — `/mnt/contest-logs/_v2`, `/mnt/wspr-data`, `/mnt/pskr-data`, … What the upstream actually served. |
+| **data side SOT** | `*.bronze` — a faithful ingest of those files. |
+
+Everything else is derived and rebuildable:
+
+- **bronze** — faithful. Not cleansed, not corrected, not deduplicated. A publisher serving a
+  malformed file is a *fact about the publisher*, and bronze is where facts about sources live.
+  Clean at ingest and the evidence is gone.
+- **silver** — cleansed, by one stated rule per table. The rule is written in that table's DDL,
+  not inferred from the code that builds it.
+- **gold** — the final curation, and whatever "curation" means for that table. The published
+  artifacts come from here.
+
+**Each layer must have a stated job and a reader.** That is not decoration, it is the test
+`wspr.silver` failed: documented for months, written by an unpackaged hand-run CUDA job, read by
+nothing, found holding zero rows and dropped on 2026-09-22 (§5c). The pattern was never the
+problem — a layer with no rule and no consumer was. A silver table that cannot say what it
+removes, or name what reads it, should be retired rather than explained.
+
+### Where the current tables sit
+
+| Source | bronze | silver | gold |
+|---|---|---|---|
+| contest | `contest.bronze` | `contest.silver` — exact all-column duplicates removed | `contest.signatures` |
+| WSPR | `wspr.bronze` | — | `wspr.signatures_v*`, `wspr.gold_*` |
+| RBN | `rbn.bronze` | — | `rbn.signatures` |
+| PSKR | `pskr.bronze` | — | `pskr.signatures` |
+| solar | `solar.bronze`, `solar.dscovr` | — | `solar.iri_lookup` |
+
+Only contest has a silver layer today, because contest is the only source so far with a defect
+that needs one. **Open question, not yet answered:** whether the `*.signatures` tables are
+already playing the silver role for the others — they filter, they do not merely aggregate — in
+which case the gold column above is misnamed rather than the silver column being empty.
+
 ## 1. Bronze — raw ingest, one row per observation
 
 Nothing derives these. They are what the upstream gave us, normalised only in field layout.
