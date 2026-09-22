@@ -7,7 +7,7 @@ WSPR/RBN/Contest schema for engineer_features() compatibility.
 
 Steps:
 1. Query pskr.bronze grouped by (tx_grid_4, rx_grid_4, band, hour, month)
-2. Join solar.bronze at 3-hour resolution for SFI/Kp
+2. Join solar.silver at 3-hour resolution for SFI/Kp
 3. Compute haversine distance and azimuth from grid centroids in numpy
 4. Filter: distance > 500 km (ground-wave exclusion)
 5. INSERT into pskr.signatures in batches
@@ -17,7 +17,7 @@ Expected output: ~9M signatures from 35M usable spots.
 Prerequisites:
     - pskr.signatures table exists (36-pskr_signatures.sql)
     - pskr.bronze populated (548M+ spots)
-    - solar.bronze populated (2000-2026)
+    - solar.silver populated (2000-2026)
 
 Usage:
     python populate_pskr_signatures.py
@@ -117,11 +117,11 @@ def main():
         sys.exit(1)
 
     solar_min = client.query(
-        "SELECT min(date) FROM solar.bronze WHERE observed_flux > 0"
+        "SELECT min(date) FROM solar.silver WHERE observed_flux > 0"
     ).result_rows[0][0]
 
     solar_count = client.query(
-        "SELECT count() FROM solar.bronze WHERE observed_flux > 0"
+        "SELECT count() FROM solar.silver WHERE observed_flux > 0"
     ).result_rows[0][0]
 
     print(f"  Host:            {CH_HOST}:{CH_PORT}")
@@ -185,12 +185,11 @@ def main():
             count()                          AS spot_count,
             stddevPop(p.snr)                 AS snr_std,
             countIf(p.snr > -20) / count()   AS reliability,
-            avg(sol.observed_flux)           AS avg_sfi,
-            avg(sol.kp_index)                AS avg_kp
+            avg(sol.sfi_observed)           AS avg_sfi,
+            avg(sol.kp)                AS avg_kp
         FROM pskr.bronze p
-        LEFT JOIN solar.bronze sol
-            ON toDate(p.timestamp) = sol.date
-            AND intDiv(toHour(p.timestamp), 3) = intDiv(toHour(sol.time), 3)
+        LEFT JOIN solar.silver sol
+            ON toStartOfInterval(p.timestamp, INTERVAL 3 HOUR) = sol.observed_at
         WHERE p.sender_grid != ''
           AND p.receiver_grid != ''
           AND length(p.sender_grid) >= 4

@@ -21,7 +21,7 @@
 #   - dxpedition.catalog populated (>= 300 rows)
 #   - rbn.bronze populated (2.18B spots)
 #   - wspr.callsign_grid populated (>= 3M rows)
-#   - solar.bronze populated (2000-2026)
+#   - solar.silver populated (2000-2026)
 #   - DDLs: 19-dxpedition_synthesis.sql, 29-rbn_dxpedition_signatures.sql
 #
 # Expected result: ~2.52M paths, ~91K signatures
@@ -64,7 +64,7 @@ if [ "$CG_COUNT" -lt 3000000 ]; then
 fi
 
 SOLAR_MIN=$(clickhouse-client --host "$CH_HOST" --query \
-    "SELECT min(date) FROM solar.bronze WHERE observed_flux > 0")
+    "SELECT min(date) FROM solar.silver WHERE observed_flux > 0")
 if [ "$SOLAR_MIN" \> "2010-01-01" ]; then
     echo "WARNING: Solar data starts at ${SOLAR_MIN} — DXpeditions go back to 2009"
     echo "Run solar-backfill -start 2000-01-01 first for full coverage."
@@ -226,8 +226,8 @@ for band in 102 103 104 105 106 107 108 109 110 111; do
             1.0                                     AS reliability,
 
             -- Solar conditions (3-hour bucket join)
-            avg(sol.observed_flux)                  AS avg_sfi,
-            avg(sol.kp_index)                       AS avg_kp,
+            avg(sol.sfi_observed)                  AS avg_sfi,
+            avg(sol.kp)                       AS avg_kp,
 
             -- Distance from 4-char grid centroids (km)
             toUInt32(avg(
@@ -279,9 +279,8 @@ for band in 102 103 104 105 106 107 108 109 110 111; do
             ))                                      AS avg_azimuth
 
         FROM rbn.dxpedition_paths p
-        LEFT JOIN solar.bronze sol
-            ON toDate(p.timestamp) = sol.date
-            AND intDiv(toHour(p.timestamp), 3) = intDiv(toHour(sol.time), 3)
+        LEFT JOIN solar.silver sol
+            ON toStartOfInterval(p.timestamp, INTERVAL 3 HOUR) = sol.observed_at
         WHERE p.band = ${band}
           AND p.snr BETWEEN -20 AND 80
           AND length(p.dx_grid) >= 4
@@ -322,7 +321,7 @@ if [ "$TOTAL_SIGS" -lt 80000 ]; then
     echo "rbn.dxpedition_signatures has ${TOTAL_SIGS} rows (minimum: 80,000)"
     echo ""
     echo "Check that rbn.dxpedition_paths has sufficient data and"
-    echo "solar.bronze covers the DXpedition time windows."
+    echo "solar.silver covers the DXpedition time windows."
     echo "============================================================"
     exit 1
 fi

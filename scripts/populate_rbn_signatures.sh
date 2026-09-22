@@ -12,7 +12,7 @@
 #   de_call → RX (skimmer receiving)
 #
 # Distance and azimuth computed from 4-char grid centroids.
-# Solar data joined from solar.bronze (2000-2026 coverage).
+# Solar data joined from solar.silver (2000-2026 coverage).
 #
 # Note: tx_mode = '' (30M spots, 2009-2010) is included — RBN was CW-only
 # in that era, so empty mode IS CW.
@@ -24,7 +24,7 @@
 #   - rbn.signatures table exists (24-rbn_signatures.sql)
 #   - rbn.bronze populated (2.18B spots)
 #   - wspr.callsign_grid populated (>= 3M rows)
-#   - solar.bronze populated (2000-2026)
+#   - solar.silver populated (2000-2026)
 #
 # Usage:
 #   bash populate_rbn_signatures.sh
@@ -55,7 +55,7 @@ if [ "$CG_COUNT" -lt 3000000 ]; then
 fi
 
 SOLAR_MIN=$(clickhouse-client --host "$CH_HOST" --query \
-    "SELECT min(date) FROM solar.bronze WHERE observed_flux > 0")
+    "SELECT min(date) FROM solar.silver WHERE observed_flux > 0")
 if [ "$SOLAR_MIN" \> "2010-01-01" ]; then
     echo "WARNING: Solar data starts at ${SOLAR_MIN} — RBN data goes back to 2009"
     echo "Run solar-backfill -start 2000-01-01 first for full coverage."
@@ -126,8 +126,8 @@ for band in 102 103 104 105 106 107 108 109 110 111; do
             1.0                                 AS reliability,
 
             -- Solar conditions
-            avg(sol.observed_flux)              AS avg_sfi,
-            avg(sol.kp_index)                   AS avg_kp,
+            avg(sol.sfi_observed)              AS avg_sfi,
+            avg(sol.kp)                   AS avg_kp,
 
             -- Distance from 4-char grid centroids (km)
             toUInt32(avg(
@@ -181,9 +181,8 @@ for band in 102 103 104 105 106 107 108 109 110 111; do
         FROM rbn.bronze r
         INNER JOIN wspr.callsign_grid cg_tx ON r.dx_call = cg_tx.callsign
         INNER JOIN wspr.callsign_grid cg_rx ON r.de_call = cg_rx.callsign
-        LEFT JOIN solar.bronze sol
-            ON toDate(r.timestamp) = sol.date
-            AND intDiv(toHour(r.timestamp), 3) = intDiv(toHour(sol.time), 3)
+        LEFT JOIN solar.silver sol
+            ON toStartOfInterval(r.timestamp, INTERVAL 3 HOUR) = sol.observed_at
         WHERE r.band = ${band}
           AND r.tx_mode IN ('CW', 'RTTY', 'PSK31', '')
           AND r.snr BETWEEN -20 AND 80

@@ -53,16 +53,11 @@ for bi in "${!BANDS[@]}"; do
                    s.azimuth,
                    toString(s.grid) AS tx_grid,
                    toString(s.reporter_grid) AS rx_grid,
-                   sol.ssn, sol.sfi, sol.kp,
+                   sol.ssn, sol.sfi_observed, sol.kp,
                    ${qnum} AS ssn_quintile
             FROM wspr.bronze s
-            INNER JOIN (
-                SELECT date, intDiv(toHour(time), 3) AS bucket,
-                       max(ssn) AS ssn, max(observed_flux) AS sfi, max(kp_index) AS kp
-                FROM solar.bronze FINAL
-                GROUP BY date, bucket
-            ) sol ON toDate(s.timestamp) = sol.date
-                     AND intDiv(toHour(s.timestamp), 3) = sol.bucket
+            INNER JOIN solar.silver sol
+    ON toStartOfInterval(s.timestamp, INTERVAL 3 HOUR) = sol.observed_at
             WHERE s.band = ${band}
               AND s.timestamp >= '2020-01-01' AND s.timestamp < '2026-02-04'
               AND s.snr BETWEEN -35 AND 25

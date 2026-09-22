@@ -10,7 +10,7 @@
 # Prerequisites:
 #   - wspr.gold_continuous table exists (05-gold_continuous.sql)
 #   - wspr.bronze populated (10.8B rows)
-#   - solar.bronze populated (76K+ rows)
+#   - solar.silver populated (76K+ rows)
 #
 # Reproducibility:
 #   All sampling uses cityHash64 (deterministic). Given the same source data
@@ -79,13 +79,8 @@ SELECT
         ) / 2.0 - 90 + 0.5
     ), ${DENSITY_LAT_BIN_WIDTH}) AS lat_bin
 FROM wspr.bronze s
-INNER JOIN (
-    SELECT date, intDiv(toHour(time), 3) AS bucket,
-           max(ssn) AS ssn
-    FROM solar.bronze FINAL
-    GROUP BY date, bucket
-) sol ON toDate(s.timestamp) = sol.date
-     AND intDiv(toHour(s.timestamp), 3) = sol.bucket
+INNER JOIN solar.silver sol
+    ON toStartOfInterval(s.timestamp, INTERVAL 3 HOUR) = sol.observed_at
 WHERE s.band = ${DENSITY_SAMPLE_BAND}
   AND s.timestamp >= '${DATE_START}' AND s.timestamp < '${DATE_END}'
   AND s.snr BETWEEN -35 AND 25
@@ -139,7 +134,7 @@ for bi in "${!BANDS[@]}"; do
             toString(s.grid) AS tx_grid,
             toString(s.reporter_grid) AS rx_grid,
             sol.ssn,
-            sol.sfi,
+            sol.sfi_observed,
             sol.kp,
             ((reinterpretAsUInt8(substring(toString(s.grid), 2, 1)) - 65) * 10
               + (reinterpretAsUInt8(substring(toString(s.grid), 4, 1)) - 48) - 90 + 0.5
@@ -147,15 +142,10 @@ for bi in "${!BANDS[@]}"; do
               + (reinterpretAsUInt8(substring(toString(s.reporter_grid), 4, 1)) - 48) - 90 + 0.5
             ) / 2.0 AS midpoint_lat,
             1.0 / sqrt(toFloat64(greatest(d.cell_count, ${DENSITY_FLOOR}))) AS sampling_weight,
-            sol.sfi * log10(toFloat64(greatest(s.distance, 1))) AS sfi_dist_interact
+            sol.sfi_observed * log10(toFloat64(greatest(s.distance, 1))) AS sfi_dist_interact
         FROM wspr.bronze s
-        INNER JOIN (
-            SELECT date, intDiv(toHour(time), 3) AS bucket,
-                   max(ssn) AS ssn, max(observed_flux) AS sfi, max(kp_index) AS kp
-            FROM solar.bronze FINAL
-            GROUP BY date, bucket
-        ) sol ON toDate(s.timestamp) = sol.date
-             AND intDiv(toHour(s.timestamp), 3) = sol.bucket
+        INNER JOIN solar.silver sol
+    ON toStartOfInterval(s.timestamp, INTERVAL 3 HOUR) = sol.observed_at
         LEFT JOIN wspr._ifw_density d
             ON d.ssn_bin = intDiv(toUInt32(sol.ssn), ${DENSITY_SSN_BIN_WIDTH})
             AND d.lat_bin = intDiv(toInt32(

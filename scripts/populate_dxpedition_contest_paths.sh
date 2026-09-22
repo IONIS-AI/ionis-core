@@ -15,7 +15,7 @@
 #   - dxpedition.catalog populated (332 entries)
 #   - contest.bronze populated (234M QSOs)
 #   - wspr.callsign_grid populated
-#   - solar.bronze populated
+#   - solar.silver populated
 #   - validation database exists (35-dxpedition_contest_paths.sql)
 #
 # Expected result: ~100K-110K rows (observations with resolved grids)
@@ -78,9 +78,9 @@ echo "  wspr.callsign_grid:   ${GRID_COUNT} callsigns"
 [ "$GRID_COUNT" -gt 0 ] || { echo "ERROR: wspr.callsign_grid is empty"; exit 1; }
 
 SOLAR_COUNT=$(clickhouse-client --host "$CH_HOST" --query \
-    "SELECT count(DISTINCT date) FROM solar.bronze")
-echo "  solar.bronze:         ${SOLAR_COUNT} dates"
-[ "$SOLAR_COUNT" -gt 0 ] || { echo "ERROR: solar.bronze is empty"; exit 1; }
+    "SELECT count(DISTINCT date) FROM solar.silver")
+echo "  solar.silver:         ${SOLAR_COUNT} dates"
+[ "$SOLAR_COUNT" -gt 0 ] || { echo "ERROR: solar.silver is empty"; exit 1; }
 
 echo ""
 
@@ -156,7 +156,7 @@ JOIN (
         date,
         avg(observed_flux) AS avg_sfi,
         avg(kp_index)      AS avg_kp
-    FROM solar.bronze
+    FROM solar.silver
     GROUP BY date
 ) s_agg
     ON toDate(c.timestamp) = s_agg.date
