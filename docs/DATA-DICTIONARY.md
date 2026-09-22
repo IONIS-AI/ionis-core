@@ -110,24 +110,44 @@ of every hour — an upload-latency cutoff, not a truncation. Retention measured
 three years because hourly totals look completely normal; the deficit only appears when grouping
 by minute-of-hour.
 
-`wspr-backfill` recovers the missing spots from `wspr.live`. **It has only been run for part of
-the affected era.** Minute 0-9 volume as a percentage of minute 10-19, by month:
+`wspr-backfill` recovers the missing spots from `wspr.live`. **It is finished, and it was not
+enough.** `wspr.live` did not escape the defect for that era either — sampling the 15th of each
+affected month, its own minute 0–9 retention matches ours to the percentage point:
+
+| Month | `wspr.live` | Ours |
+|---|---:|---:|
+| 2023-11 | 27.7% | 27.7% |
+| 2024-02 | 21.1% | 21.1% |
+| 2024-06 | 22.3% | 22.3% |
+| 2024-08 | 15.5% | 15.5% |
+| 2024-12 | 16.7% | 16.7% |
+| 2025-03 | 17.2% | 17.2% |
+| 2025-04 | 22.2% | 22.2% |
+
+Confirmed at **id level**, not by count: backfill dry runs on four separate months each returned
+`new=0, already-held=everything`.
+
+So roughly **392 million spots across 2023-10-16 … 2025-05-31 no longer exist anywhere we can
+reach** — 206.09M held in minute 0–9 against a 597.68M reference from minute 10–19. Month by
+month, minute 0–9 volume as a percentage of minute 10–19:
 
 | Period | State |
 |---|---|
 | ≤ 2023-09 | complete — predates the defect |
-| 2023-10 | 63.5% — partial |
-| 2023-11 … 2024-12 | **15.2 – 26.8% — not backfilled** |
+| 2023-10 | 63.5% — defect starts mid-month (2023-10-16) |
+| 2023-11 … 2024-12 | **15.2 – 26.8% — permanently short** |
 | 2025-01 | complete |
-| 2025-02 | 88.6% — partial |
-| 2025-03, 2025-04 | **18.8 – 38.2% — not backfilled** |
-| 2025-05 | 85.9% — partial |
+| 2025-02 | 88.6% |
+| 2025-03, 2025-04 | **18.8 – 38.2% — permanently short** |
+| 2025-05 | 85.9% |
 | 2025-06 onward | complete — live ingest path, unaffected |
 
-So for **2023-10 through 2025-05, `wspr.bronze` under-counts the first ten minutes of every
-hour.** Any hour-of-day or seasonal analysis over that span is skewed unless it either uses
-`wspr.bronze_uniform` or restricts to `toMinute(timestamp) >= 10`. Use the view; the remaining
-backfill is tracked separately.
+**So for 2023-10 … 2025-05, `wspr.bronze` under-counts the first ten minutes of every hour, and
+always will.** Any hour-of-day or seasonal analysis over that span is skewed unless it uses
+`wspr.bronze_uniform` or restricts to `toMinute(timestamp) >= 10`. This is not a backlog — it is
+a permanent property of the corpus, and the view is a permanent fixture rather than a stopgap.
+
+Totals and coverage figures are unaffected; they were never minute-sensitive.
 
 This view had no DDL and no documentation until this file. It is the single most consequential
 undocumented object in the database, because it does not fail — it quietly answers a different

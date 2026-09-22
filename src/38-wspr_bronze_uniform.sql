@@ -33,11 +33,20 @@
 -- Over that window wspr.bronze under-counts the first ten minutes of every hour,
 -- and a GROUP BY hour reads it as a real propagation dip. It is not one.
 --
--- cmd/wspr-backfill recovers the missing spots from wspr.live, and has been run
--- for only part of the affected era (2025-01, and partially 2025-02 and 2025-05).
--- 2023-11 .. 2024-12 and 2025-03 .. 2025-04 remain depleted -- measured at 15-27%
--- of the adjacent complete window. Until that backfill finishes, this view is the
--- only correct source for time-of-day work over those months.
+-- cmd/wspr-backfill recovers the missing spots from wspr.live. IT IS FINISHED, AND
+-- IT WAS NOT ENOUGH.
+--
+-- wspr.live did not escape the defect for that era either. Sampling the 15th of each
+-- affected month, its own minute 0-9 retention matches ours to the percentage point:
+-- 27.7/27.7 (2023-11), 21.1/21.1 (2024-02), 22.3/22.3 (2024-06), 15.5/15.5 (2024-08),
+-- 16.7/16.7 (2024-12), 17.2/17.2 (2025-03), 22.2/22.2 (2025-04). Confirmed at ID level
+-- rather than by count -- backfill dry runs on four separate months each returned
+-- new=0, already-held=everything.
+--
+-- So roughly 392 MILLION spots across 2023-10-16 .. 2025-05-31 no longer exist anywhere
+-- we can reach (206.09M held in minute 0-9 against a 597.68M reference from 10-19).
+-- This view is therefore the ONLY correct source for time-of-day work over that span,
+-- permanently.
 --
 -- WHEN NOT TO USE IT
 --
@@ -45,9 +54,13 @@
 -- question. The view discards ~17% of rows by construction, including rows that
 -- are perfectly good for 2026 and for everything before 2023-10.
 --
--- RETIREMENT: when the backfill has covered 2023-10 .. 2025-05 and minute 0-9
--- volume matches minute 10-19 across the span, this view becomes unnecessary.
--- Verify with the query in docs/DATA-DICTIONARY.md section 5 before dropping it.
+-- RETIREMENT: none. This view is permanent.
+--
+-- An earlier revision of this file said it could retire "when the backfill has covered
+-- 2023-10 .. 2025-05". That condition can never be met -- the data is gone upstream, not
+-- merely un-fetched. Do not drop this view expecting the gap to have closed; it will not.
+-- Verify for yourself with the query in docs/DATA-DICTIONARY.md section 5 before
+-- concluding otherwise.
 -- =============================================================================
 
 CREATE VIEW IF NOT EXISTS wspr.bronze_uniform AS
