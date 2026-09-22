@@ -29,7 +29,14 @@
 # ==============================================================================
 set -e
 
-CH_HOST="${CH_HOST:-192.168.1.90}"
+# Site configuration and shared defaults. Sourced rather than redeclared: this line
+# used to be CH_HOST="${CH_HOST:-192.168.1.90}" in each of sixteen scripts, so one
+# host's address was the shipped default sixteen times over and a site had sixteen
+# places to change it. ionis-env reads /etc/ionis-core/ionis-core.conf first, so a
+# site sets it once. An explicit CH_HOST in the environment still wins.
+# shellcheck source=/dev/null
+[ -r /usr/bin/ionis-env ] && . /usr/bin/ionis-env
+CH_HOST="${CH_HOST:-localhost}"
 
 START_TIME=$(date +%s)
 SCRIPT_DIR="$(dirname "$0")"
@@ -40,8 +47,13 @@ SCRIPT_DIR="$(dirname "$0")"
 TRAINING_DIR=""
 if [ -d "$SCRIPT_DIR/../../ionis-training/versions" ]; then
     TRAINING_DIR="$SCRIPT_DIR/../../ionis-training/versions"
-elif [ -d "/mnt/ai-stack/ionis-ai/ionis-training/versions" ]; then
-    TRAINING_DIR="/mnt/ai-stack/ionis-ai/ionis-training/versions"
+elif [ -n "$IONIS_TRAINING_DIR" ] && [ -d "$IONIS_TRAINING_DIR" ]; then
+    # The fallback used to be /mnt/ai-stack/ionis-ai/ionis-training/versions -- a
+    # workspace root that stopped existing when the repos moved under
+    # $WORKSPACE_ROOT, so the branch had been dead for months while looking like
+    # a working alternative. Set IONIS_TRAINING_DIR in
+    # /etc/ionis-core/ionis-core.conf to name a real one.
+    TRAINING_DIR="$IONIS_TRAINING_DIR"
 fi
 
 # --------------------------------------------------------------------------

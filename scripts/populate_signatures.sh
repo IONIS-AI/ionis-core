@@ -30,7 +30,14 @@
 # ==============================================================================
 set -e
 
-CH_HOST="${CH_HOST:-192.168.1.90}"
+# Site configuration and shared defaults. Sourced rather than redeclared: this line
+# used to be CH_HOST="${CH_HOST:-192.168.1.90}" in each of sixteen scripts, so one
+# host's address was the shipped default sixteen times over and a site had sixteen
+# places to change it. ionis-env reads /etc/ionis-core/ionis-core.conf first, so a
+# site sets it once. An explicit CH_HOST in the environment still wins.
+# shellcheck source=/dev/null
+[ -r /usr/bin/ionis-env ] && . /usr/bin/ionis-env
+CH_HOST="${CH_HOST:-localhost}"
 BANDS=(102 103 104 105 106 107 108 109 110 111)
 BAND_NAMES=("160m" "80m" "60m" "40m" "30m" "20m" "17m" "15m" "12m" "10m")
 

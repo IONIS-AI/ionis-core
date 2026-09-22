@@ -25,7 +25,14 @@
 #   exit:   0 clean · 1 orphans or ghosts found · 2 could not reach ClickHouse
 set -euo pipefail
 
-CH_HOST="${CH_HOST:-10.60.1.1}"
+# Site configuration and shared defaults. Sourced rather than redeclared: this line
+# used to be CH_HOST="${CH_HOST:-192.168.1.90}" in each of sixteen scripts, so one
+# host's address was the shipped default sixteen times over and a site had sixteen
+# places to change it. ionis-env reads /etc/ionis-core/ionis-core.conf first, so a
+# site sets it once. An explicit CH_HOST in the environment still wins.
+# shellcheck source=/dev/null
+[ -r /usr/bin/ionis-env ] && . /usr/bin/ionis-env
+CH_HOST="${CH_HOST:-localhost}"
 [[ "${1:-}" == "--host" ]] && CH_HOST="$2"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/src"
 

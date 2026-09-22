@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.2
+Version:        4.0.3
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -31,6 +31,11 @@ training, and validation databases.
 
 %install
 # Create directories
+# Site configuration, sourced by ionis-env. %config(noreplace) and shipped with no
+# assignments: absent or untouched, the built-in defaults apply.
+install -d -m 0755 %{buildroot}%{_sysconfdir}/%{name}
+install -p -m 0644 config/ionis-core.conf %{buildroot}%{_sysconfdir}/%{name}/ionis-core.conf
+
 install -d %{buildroot}%{_bindir}
 install -d %{buildroot}%{_datadir}/%{name}/ddl
 install -d %{buildroot}%{_datadir}/%{name}/scripts
@@ -72,6 +77,8 @@ echo "   ionis-db-init --stamp-version"
 echo "------------------------------------------------------------"
 
 %files
+%dir %{_sysconfdir}/%{name}
+%config(noreplace) %{_sysconfdir}/%{name}/ionis-core.conf
 %license COPYING
 %doc README.md
 %{_bindir}/ionis-db-init
@@ -86,6 +93,30 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Mon Sep 22 2026 Bob <bob@ipa.home.arpa> - 4.0.3-1
+- Host-neutrality, the fleet-zfs-backup pattern (KI7MT/fleet-ops#183) applied here.
+  Sixteen populate scripts each carried CH_HOST="${CH_HOST:-192.168.1.90}" and
+  populate_stratified.sh carried CH_HOST="192.168.1.90" with no override at all --
+  one host's address shipped seventeen times in a package published on COPR, and
+  seventeen files to edit to change it
+- Scripts now source /usr/bin/ionis-env, which was already shipped for this and
+  which nothing used. It exported CLICKHOUSE_HOST while every script read CH_HOST,
+  so the two mechanisms never met; ionis-env now sets both
+- NEW %config(noreplace) /etc/ionis-core/ionis-core.conf, shipped with no
+  assignments: absent or untouched, behaviour is what it was
+- Precedence is explicit environment, then conf, then default. zfs-backup lets its
+  conf win outright, which is right there and wrong here: every script's header
+  documents `CH_HOST=10.60.1.1 bash populate_*.sh`, and a plain assignment in the
+  conf would silently beat it
+- Defaults leave /mnt/ai-stack (Judge: that dataset is AI stack ops): WSPR_DATA_DIR
+  /mnt/wspr-data, SOLAR_DATA_DIR /mnt/solar-data, CLICKHOUSE_DATA_DIR
+  /var/lib/clickhouse -- which is where ClickHouse actually is on this host
+- populate_training_runs.sh's fallback named /mnt/ai-stack/ionis-ai/... , a
+  workspace root that stopped existing when the repos moved. Dead for months while
+  looking like a working alternative; now $IONIS_TRAINING_DIR
+- derive_dxpedition_windows.py had http://192.168.1.90:8123/ hardcoded with no
+  override; export_iri_lookup_npz.py defaulted its output to the same dead path
+
 * Wed Sep 09 2026 Greg Beam <ki7mt@yahoo.com> - 4.0.2-1
 - 25-live_conditions.sql: wspr.live_conditions changes from ENGINE = Memory to a durable
   append-only MergeTree (ORDER BY updated_at, TTL 2 years). Memory meant the table was lost

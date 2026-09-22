@@ -60,8 +60,8 @@ def main():
     parser = argparse.ArgumentParser(
         description='Export solar.iri_lookup as NumPy .npz for M3 training')
     parser.add_argument('--output', type=str,
-                        default='/mnt/ai-stack/ionis-ai/iri_lookup.npz',
-                        help='Output .npz path (default: /mnt/ai-stack/ionis-ai/iri_lookup.npz)')
+                        default=os.environ.get('IONIS_IRI_NPZ', 'iri_lookup.npz'),
+                        help='Output .npz path (default: $IONIS_IRI_NPZ, else ./iri_lookup.npz). The old default named a workspace root that no longer exists.')
     parser.add_argument('--sfi-step', type=int, default=10,
                         help='SFI bucket step size (default: 10, use 5 for 35-bucket atlas)')
     parser.add_argument('--host', type=str,
