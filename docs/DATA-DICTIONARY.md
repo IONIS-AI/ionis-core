@@ -28,8 +28,9 @@ does not fit it.
 
 | | |
 |---|---|
-| **archive side SOT** | the files on disk — `/mnt/contest-logs/_v2`, `/mnt/wspr-data`, `/mnt/pskr-data`, … What the upstream actually served. |
-| **data side SOT** | `*.bronze` — a faithful ingest of those files. |
+| **archive SOT** | the files on disk — `/mnt/contest-logs/_v2`, `/mnt/wspr-data`, `/mnt/pskr-data`, … What the upstream actually served. |
+| **data SOT** | `*.bronze` — a faithful ingest of those files. |
+| **clean SOT** | `*.silver` — what gold extracts from, once curation lands. |
 
 Everything else is derived and rebuildable:
 
@@ -39,8 +40,40 @@ Everything else is derived and rebuildable:
 - **silver** — **an extract, not a repair.** It takes bronze as-is and selects what we want in
   silver. It requires nothing of bronze and asks bronze to change nothing. The selection
   criterion is written in that table's DDL, not inferred from the code that builds it.
-- **gold** — **fact tables, and there can be many per silver table.** Each is drawn from the same
-  silver for a different analytical purpose. The published artifacts come from here.
+
+  **Curating silver may take several intermediate steps.** It is not necessarily one query, and
+  a staged build is fine. What matters is the *landed* result: once silver lands it is the clean
+  SOT that gold extracts from, and gold never reaches past it into bronze. A gold build that
+  still reads bronze is a sign silver is not carrying what it should.
+- **gold** — **business-ready, and there are TWO shapes.** Many per silver, and which shape
+  depends on who consumes it:
+
+  | | **Gold (BI)** | **Gold (ML)** |
+  |---|---|---|
+  | shape | star schema — fact + dimension tables | wide / one big table (OBT) |
+  | joins | simple joins at query time | **none** — denormalized |
+  | optimised for | dashboards, aggregation, KPIs | model training, feature access |
+  | consumers | Power BI, Superset, Atlas, Excel | PyTorch, Spark, pandas |
+  | ours | **none yet** | `wspr.gold_v6` |
+
+  This is the clearest statement of why *many gold from one silver* is not a nicety. The same
+  silver serves two consumers whose optimal physical shapes are **opposites**: BI wants
+  normalised facts and dimensions so a human can reason about the joins; ML wants everything
+  flattened so training never joins at all. Pick one shape and the other consumer pays for it on
+  every query or every batch.
+
+  `wspr.gold_v6` is already a correct Gold (ML) OBT — 15 columns, 10M rows, fully denormalized,
+  with derived features (`sfi_dist_interact`, `kp_penalty`, `sampling_weight`) precomputed so a
+  training run touches one table and joins nothing. That shape predates this model, and the
+  model says it was right.
+
+  **We have no Gold (BI) at all.** Every dashboard question today goes to bronze or to the
+  signatures tables directly, which is why the Atlas and Superset work keep re-deriving the same
+  joins by hand. The missing layer is a star schema over conformed dimensions we already have or
+  have identified — `solar.silver`, `wspr.callsign_grid`, `grid_lookup`, and a path-geometry
+  dimension — not more fact data.
+
+  The published artifacts come from gold, whichever shape fits the artifact.
 
 The direction of that dependency matters. Silver never pushes a requirement back onto bronze, so
 a defect in ingest is fixed in the ingester and never compensated for downstream. When the
