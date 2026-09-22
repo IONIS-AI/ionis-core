@@ -29,8 +29,6 @@ DDL                                Database     Creates
 05-geo_functions.sql               geo          v_grid_validation_example
 06-lab_versions.sql                data_mgmt    lab_versions, v_lab_versions_latest
 07-callsign_grid.sql               wspr         callsign_grid
-08-model_features.sql              wspr         silver
-09-quality_distribution_mv.sql     wspr         v_quality_distribution (MV)
 10-rbn_schema_v1.sql               rbn          bronze
 11-contest_schema_v1.sql           contest      bronze
 12-signatures_v1.sql               wspr         signatures_v1
