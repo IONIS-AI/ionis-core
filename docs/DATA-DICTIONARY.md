@@ -36,10 +36,21 @@ Everything else is derived and rebuildable:
 - **bronze** — faithful. Not cleansed, not corrected, not deduplicated. A publisher serving a
   malformed file is a *fact about the publisher*, and bronze is where facts about sources live.
   Clean at ingest and the evidence is gone.
-- **silver** — cleansed, by one stated rule per table. The rule is written in that table's DDL,
-  not inferred from the code that builds it.
-- **gold** — the final curation, and whatever "curation" means for that table. The published
-  artifacts come from here.
+- **silver** — **an extract, not a repair.** It takes bronze as-is and selects what we want in
+  silver. It requires nothing of bronze and asks bronze to change nothing. The selection
+  criterion is written in that table's DDL, not inferred from the code that builds it.
+- **gold** — **fact tables, and there can be many per silver table.** Each is drawn from the same
+  silver for a different analytical purpose. The published artifacts come from here.
+
+The direction of that dependency matters. Silver never pushes a requirement back onto bronze, so
+a defect in ingest is fixed in the ingester and never compensated for downstream. When the
+contest parser was found stopping at the first `END-OF-LOG` and silently dropping the rest of a
+multi-log file, that was a bronze ingest defect with a bronze ingest fix — silver had no business
+knowing about it.
+
+And because gold is many-from-one, silver is worth getting right once: `contest.signatures` is
+one fact table over `contest.silver`, and logger market share, category distribution and band
+activity are others that would draw from the same extract rather than re-deriving from bronze.
 
 **Each layer must have a stated job and a reader.** That is not decoration, it is the test
 `wspr.silver` failed: documented for months, written by an unpackaged hand-run CUDA job, read by
@@ -51,7 +62,7 @@ removes, or name what reads it, should be retired rather than explained.
 
 | Source | bronze | silver | gold |
 |---|---|---|---|
-| contest | `contest.bronze` | `contest.silver` — exact all-column duplicates removed | `contest.signatures` |
+| contest | `contest.bronze` | `contest.silver` — distinct rows extracted | `contest.signatures`, and room for more |
 | WSPR | `wspr.bronze` | — | `wspr.signatures_v*`, `wspr.gold_*` |
 | RBN | `rbn.bronze` | — | `rbn.signatures` |
 | PSKR | `pskr.bronze` | — | `pskr.signatures` |

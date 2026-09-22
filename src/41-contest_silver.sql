@@ -14,7 +14,14 @@
 -- the publisher, and bronze is where facts about sources live. Clean at ingest and
 -- the evidence is gone.
 --
--- THE ONE RULE: a duplicate is an EXACT match on every column.
+-- THE EXTRACTION CRITERION: distinct rows. A duplicate is an EXACT match on every
+-- column.
+--
+-- Note "extract", not "clean". This table takes bronze as it stands and selects what
+-- belongs in silver. It asks nothing of bronze and fixes nothing there -- an ingest
+-- defect is the ingester's to fix, never something a downstream layer compensates
+-- for. The parser dropping everything after the first END-OF-LOG in a multi-log file
+-- is a bronze ingest bug, and silver has no business knowing about it.
 --
 -- Judge's definition, and it is exactly right for contest data. Hams work dupes on
 -- purpose -- if the first exchange was busted it is faster to work the station again
@@ -38,6 +45,11 @@
 -- thousands of QSOs each -- R4HQ 3.26K doubled, 8N2HQ 3.23K, B1HQ 1.42K. Every grid
 -- pair those stations contributed to carries 2x spot_count in contest.signatures,
 -- and spot_count feeds reliability. A path is not 0.04% wrong, it is twice wrong.
+--
+-- GOLD IS MANY-FROM-ONE. contest.signatures is one fact table over this extract;
+-- logger market share, category distribution and band activity are others that would
+-- draw from the same silver rather than re-deriving from bronze. That is why the
+-- extract is worth getting right once.
 --
 -- THIS LAYER HAS A CONSUMER, which is the test wspr.silver failed. That table was
 -- documented for months, written by an unpackaged hand-run job, read by nothing, and
