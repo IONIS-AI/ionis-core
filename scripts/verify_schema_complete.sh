@@ -57,6 +57,20 @@ sed 's/--.*$//' "$SRC"/*.sql \
   | grep -oiP 'CREATE\s+(OR REPLACE\s+)?(MATERIALIZED\s+)?(TABLE|VIEW)\s+(IF NOT EXISTS\s+)?`?[A-Za-z0-9_]+\.[A-Za-z0-9_]+' \
   | awk '{print tolower($NF)}' | tr -d '`' | LC_ALL=C sort -u > /tmp/.schema_ddl.$$
 
+# RETAINED BACKUPS ARE NOT ORPHANS. A table renamed aside before a rebuild --
+# contest.bronze_pre_v2, solar.bronze_pre_rebuild_20260922 -- is deliberate, dated,
+# and has no DDL by design: it is a snapshot, not a schema object. Reporting it as
+# an orphan on every run trains people to skim past the section that matters, which
+# is the same failure as a warning on a job that already exits 1.
+#
+# They are listed separately so they stay visible and get dropped when the rebuild
+# they protect is trusted.
+backups=$(LC_ALL=C grep -E '_pre_v2$|_pre_rebuild_[0-9]{8}$' /tmp/.schema_live.$$ || true)
+if [ -n "$backups" ]; then
+    LC_ALL=C grep -vE '_pre_v2$|_pre_rebuild_[0-9]{8}$' /tmp/.schema_live.$$ > /tmp/.schema_live2.$$ || true
+    mv /tmp/.schema_live2.$$ /tmp/.schema_live.$$
+fi
+
 orphans=$(LC_ALL=C comm -23 /tmp/.schema_live.$$ /tmp/.schema_ddl.$$)
 ghosts=$(LC_ALL=C comm -13 /tmp/.schema_live.$$ /tmp/.schema_ddl.$$)
 rm -f /tmp/.schema_live.$$ /tmp/.schema_ddl.$$
@@ -74,6 +88,10 @@ if [[ -n "$ghosts" ]]; then
   echo "GHOST — DDL in src/, no such table on $CH_HOST:"
   sed 's/^/    /' <<< "$ghosts"
   echo "    -> apply the schema, or delete the file. Leaving it means the next apply recreates it."
+fi
+if [[ -n "$backups" ]]; then
+    echo "retained backups (deliberate, no DDL expected — drop when the rebuild is trusted):"
+    sed 's/^/    /' <<< "$backups"
 fi
 [[ $rc -eq 0 ]] && echo "schema complete: every live table has DDL, every DDL file has a table ($CH_HOST)"
 exit $rc
