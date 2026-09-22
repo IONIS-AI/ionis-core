@@ -21,6 +21,91 @@ Verified against `10.60.1.1:9000` on 2026-09-22. Row counts move; lineage does n
 
 ---
 
+## 0. Two sources of truth, and the layers between them
+
+**Judge, 2026-09-22.** This is the default shape for every table unless a specific use case
+does not fit it.
+
+| | |
+|---|---|
+| **archive SOT** | the files on disk — `/mnt/contest-logs/_v2`, `/mnt/wspr-data`, `/mnt/pskr-data`, … What the upstream actually served. |
+| **data SOT** | `*.bronze` — a faithful ingest of those files. |
+| **clean SOT** | `*.silver` — what gold extracts from, once curation lands. |
+
+Everything else is derived and rebuildable:
+
+- **bronze** — faithful. Not cleansed, not corrected, not deduplicated. A publisher serving a
+  malformed file is a *fact about the publisher*, and bronze is where facts about sources live.
+  Clean at ingest and the evidence is gone.
+- **silver** — **an extract, not a repair.** It takes bronze as-is and selects what we want in
+  silver. It requires nothing of bronze and asks bronze to change nothing. The selection
+  criterion is written in that table's DDL, not inferred from the code that builds it.
+
+  **Curating silver may take several intermediate steps.** It is not necessarily one query, and
+  a staged build is fine. What matters is the *landed* result: once silver lands it is the clean
+  SOT that gold extracts from, and gold never reaches past it into bronze. A gold build that
+  still reads bronze is a sign silver is not carrying what it should.
+- **gold** — **business-ready, and there are TWO shapes.** Many per silver, and which shape
+  depends on who consumes it:
+
+  | | **Gold (BI)** | **Gold (ML)** |
+  |---|---|---|
+  | shape | star schema — fact + dimension tables | wide / one big table (OBT) |
+  | joins | simple joins at query time | **none** — denormalized |
+  | optimised for | dashboards, aggregation, KPIs | model training, feature access |
+  | consumers | Power BI, Superset, Atlas, Excel | PyTorch, Spark, pandas |
+  | ours | **none yet** | `wspr.gold_v6` |
+
+  This is the clearest statement of why *many gold from one silver* is not a nicety. The same
+  silver serves two consumers whose optimal physical shapes are **opposites**: BI wants
+  normalised facts and dimensions so a human can reason about the joins; ML wants everything
+  flattened so training never joins at all. Pick one shape and the other consumer pays for it on
+  every query or every batch.
+
+  `wspr.gold_v6` is already a correct Gold (ML) OBT — 15 columns, 10M rows, fully denormalized,
+  with derived features (`sfi_dist_interact`, `kp_penalty`, `sampling_weight`) precomputed so a
+  training run touches one table and joins nothing. That shape predates this model, and the
+  model says it was right.
+
+  **We have no Gold (BI) at all.** Every dashboard question today goes to bronze or to the
+  signatures tables directly, which is why the Atlas and Superset work keep re-deriving the same
+  joins by hand. The missing layer is a star schema over conformed dimensions we already have or
+  have identified — `solar.silver`, `wspr.callsign_grid`, `grid_lookup`, and a path-geometry
+  dimension — not more fact data.
+
+  The published artifacts come from gold, whichever shape fits the artifact.
+
+The direction of that dependency matters. Silver never pushes a requirement back onto bronze, so
+a defect in ingest is fixed in the ingester and never compensated for downstream. When the
+contest parser was found stopping at the first `END-OF-LOG` and silently dropping the rest of a
+multi-log file, that was a bronze ingest defect with a bronze ingest fix — silver had no business
+knowing about it.
+
+And because gold is many-from-one, silver is worth getting right once: `contest.signatures` is
+one fact table over `contest.silver`, and logger market share, category distribution and band
+activity are others that would draw from the same extract rather than re-deriving from bronze.
+
+**Each layer must have a stated job and a reader.** That is not decoration, it is the test
+`wspr.silver` failed: documented for months, written by an unpackaged hand-run CUDA job, read by
+nothing, found holding zero rows and dropped on 2026-09-22 (§5c). The pattern was never the
+problem — a layer with no rule and no consumer was. A silver table that cannot say what it
+removes, or name what reads it, should be retired rather than explained.
+
+### Where the current tables sit
+
+| Source | bronze | silver | gold |
+|---|---|---|---|
+| contest | `contest.bronze` | `contest.silver` — distinct rows extracted | `contest.signatures`, and room for more |
+| WSPR | `wspr.bronze` | — | `wspr.signatures_v*`, `wspr.gold_*` |
+| RBN | `rbn.bronze` | — | `rbn.signatures` |
+| PSKR | `pskr.bronze` | — | `pskr.signatures` |
+| solar | `solar.bronze`, `solar.dscovr` | — | `solar.iri_lookup` |
+
+Only contest has a silver layer today, because contest is the only source so far with a defect
+that needs one. **Open question, not yet answered:** whether the `*.signatures` tables are
+already playing the silver role for the others — they filter, they do not merely aggregate — in
+which case the gold column above is misnamed rather than the silver column being empty.
+
 ## 1. Bronze — raw ingest, one row per observation
 
 Nothing derives these. They are what the upstream gave us, normalised only in field layout.
