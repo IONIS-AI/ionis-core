@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.3
+Version:        4.0.4
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -93,6 +93,33 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Tue Sep 22 2026 Bob <bob@ipa.home.arpa> - 4.0.4-1
+- REQUIRED alongside ionis-apps 4.2.0. solar.bronze is superseded by four
+  per-source tables; the 4.0.3 populate scripts still reference it and will FAIL
+  against the live schema until this lands.
+- NEW solar.{kp,sfi,ssn,xray}_bronze (DDL 42-45): one table per source, no merge.
+  The old table combined three NOAA streams with max() over whatever had staged, so
+  a stream that failed to download became 0 and the INSERT still succeeded -- with
+  kp_index a non-nullable Float32, a missing Kp and a quiet Kp=0 were the same
+  value, and four months of 2026 hold SFI on every row and Kp on none.
+- NEW solar.silver (DDL 46): the conformed 3-hour grid. Every signature build
+  carried its own copy of the same two-line bucket join against solar.bronze --
+  eight scripts, one expression, eight places to change it. Three more carried an
+  aggregating subquery that existed only because solar.bronze was not on a 3-hour
+  grid. The rule now lives in populate_solar_silver.sh alone.
+- Nine build scripts repointed onto solar.silver; the subqueries are gone rather
+  than rewritten. Verified live: CQ-WW-CW 2024, 5,408,056 rows, 100% joined to Kp.
+- Every solar.silver column is Nullable on purpose. join_use_nulls=1 in the
+  populate is load-bearing, not tuning: without it ClickHouse LEFT JOIN fills
+  unmatched rows with the column DEFAULT, and the first build reported SFI present
+  on all 276,784 rows when Penticton starts in 2004.
+- DateTime64 and Date32 where the archives predate 1970. DateTime stops at 2106 and
+  wrapped GFZ's 1932-1969 into the future; Date stops at 2149 and wrapped SIDC's
+  1818-1969, losing 10,674 rows silently.
+- All new tables partition by DECADE. Yearly makes ~100-200 tiny parts on tables of
+  a few hundred thousand rows, and a 209-year series exceeds
+  max_partitions_per_insert_block at yearly grain.
+
 * Mon Sep 22 2026 Bob <bob@ipa.home.arpa> - 4.0.3-1
 - Host-neutrality, the fleet-zfs-backup pattern (KI7MT/fleet-ops#183) applied here.
   Sixteen populate scripts each carried CH_HOST="${CH_HOST:-192.168.1.90}" and
