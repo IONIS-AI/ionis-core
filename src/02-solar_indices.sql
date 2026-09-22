@@ -4,21 +4,28 @@
 -- Description...: Raw Layer for Solar Indices (SFI, SSN, Kp/Ap)
 -- ==============================================================================
 
-CREATE DATABASE IF NOT EXISTS solar;
-
+-- RETIRED 2026-09-22. The solar database is still created here; solar.bronze is not.
 --
-CREATE TABLE IF NOT EXISTS solar.bronze (
-    date Date32,
-    time DateTime,
-    observed_flux Float32,
-    adjusted_flux Float32,
-    ssn Float32,
-    kp_index Float32,
-    ap_index Float32,
-    xray_short Float32 DEFAULT 0 COMMENT 'GOES 0.05-0.4nm X-ray flux (W/m²)',
-    xray_long Float32 DEFAULT 0 COMMENT 'GOES 0.1-0.8nm X-ray flux (W/m²)',
-    source_file LowCardinality(String),
-    updated_at DateTime DEFAULT now()
-) ENGINE = ReplacingMergeTree(updated_at)
-ORDER BY (date, time)
-COMMENT '@PROGRAM@ v@VERSION@ Solar Raw Table';
+-- solar.bronze merged three NOAA streams into one row per (date,time) with max()
+-- over whatever had staged. A stream that failed to download became 0 and the
+-- INSERT still succeeded -- and with kp_index a non-nullable Float32, a missing Kp
+-- and a genuinely quiet Kp=0 were the same value. April through August 2026 carry
+-- SFI on every row and Kp on none, and every run reported success.
+--
+-- Superseded by one table per source, which removes the failure by construction:
+--
+--   42-solar_kp_bronze.sql     GFZ definitive, 1932-
+--   43-solar_sfi_bronze.sql    Penticton, 2004-10-28-
+--   44-solar_ssn_bronze.sql    SIDC, 1818-
+--   45-solar_xray_bronze.sql   GOES, 3-hour buckets
+--   46-solar_silver.sql        the conformed 3-hour grid all nine builds join
+--
+-- The live table was renamed to solar.bronze_pre_rebuild_20260922 rather than
+-- dropped. The CREATE is removed HERE because src/*.sql is globbed by the Makefile
+-- and by ionis-core.spec, so leaving it would have the next schema apply silently
+-- recreate an empty table that nothing writes and nine scripts no longer read.
+--
+-- scripts/verify_schema_complete.sh caught exactly that: DDL present, table absent.
+-- Found at tag time, which is the check earning its place.
+
+CREATE DATABASE IF NOT EXISTS solar;
