@@ -39,13 +39,16 @@ code paths within 0.05%.
     ./derive_dxpedition_windows.py --self-test
 """
 
+import os
 import argparse
 import datetime
 import json
 import sys
 import urllib.request
 
-CH = "http://192.168.1.90:8123/"
+# One host's address, hardcoded with no override. CH_HOST matches every other
+# script here and /etc/ionis-core/ionis-core.conf.
+CH = os.environ.get("CH_URL") or f'http://{os.environ.get("CH_HOST", "localhost")}:8123/'
 THRESHOLD_FRACTION = 0.02
 MAX_GAP_DAYS = 2
 

@@ -8,24 +8,59 @@
 #
 # OVERRIDE PRIORITY (highest to lowest):
 #   1. Pre-existing environment variables (user-set)
-#   2. Built-in defaults
+#   2. /etc/ionis-core/ionis-core.conf, if it exists
+#   3. Built-in defaults
 #
-# RAID-0 NVMe Configuration:
-#   The default ClickHouse data path is /mnt/ai-stack/clickhouse for
-#   optimal performance on RAID-0 NVMe arrays. Override via environment:
+# HOST-NEUTRALITY (KI7MT/fleet-ops#183, applied here 2026-09-22). The defaults below
+# are ONE host's, and this package is published on COPR. A site sets its own in
+# /etc/ionis-core/ionis-core.conf; the package ships that file EMPTY of assignments,
+# so absent or untouched, behaviour is exactly what it was before.
 #
-#   export CLICKHOUSE_DATA_DIR=/custom/path
-#   source /usr/bin/ionis-env
+# This is the same mechanism fleet-zfs-backup uses, and for the same reason: a
+# packaged script must not carry one host's addresses and mount points as the only
+# possible values.
+#
+#   echo 'CH_HOST=clickhouse.example.net' >> /etc/ionis-core/ionis-core.conf
+#
+# or, for a single run:
+#
+#   CH_HOST=10.60.1.1 bash populate_callsign_grid.sh
 #
 # ==============================================================================
 
 PROGRAM="@PROGRAM@"
 VERSION="@VERSION@"
 
+# Site configuration, read before the defaults below.
+#
+# fleet-zfs-backup sources its conf and lets the assignments win outright. That is
+# right there, where the conf is the only way to configure the job. It is wrong here,
+# because every populate script's header documents the one-off form
+#
+#     CH_HOST=10.60.1.1 bash populate_callsign_grid.sh
+#
+# and a plain CH_HOST=... in the conf would silently beat it. A documented override
+# that does not override is worse than no override.
+#
+# So: remember what the caller set, source the conf, put the caller's values back.
+# Precedence ends up explicit environment, then conf, then the defaults below --
+# which is what this file's header has always claimed.
+#
+# IONIS_CONF_ROOT exists so this can be exercised without writing to /etc.
+_ionis_preset="$(set | grep -E '^(CH_HOST|CLICKHOUSE_[A-Z_]+|WSPR_DATA_DIR|SOLAR_DATA_DIR|LAB_[A-Z_]+|INGEST_[A-Z_]+|IONIS_[A-Z_]+)=' || true)"
+[ -r "${IONIS_CONF_ROOT:-/etc}/${PROGRAM}/${PROGRAM}.conf" ] && . "${IONIS_CONF_ROOT:-/etc}/${PROGRAM}/${PROGRAM}.conf"
+[ -n "$_ionis_preset" ] && eval "$_ionis_preset"
+unset _ionis_preset
+
 # ==============================================================================
 # 1. CLICKHOUSE CONNECTION
 # ==============================================================================
-export CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-localhost}"
+# CH_HOST is the name the populate scripts read; CLICKHOUSE_HOST is the older name
+# kept for anything already using it. They were separate mechanisms that never met:
+# ionis-env exported CLICKHOUSE_HOST, sixteen scripts each declared their own
+# CH_HOST default, and nothing sourced ionis-env at all.
+export CH_HOST="${CH_HOST:-localhost}"
+export CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-$CH_HOST}"
 export CLICKHOUSE_PORT="${CLICKHOUSE_PORT:-9000}"
 export CLICKHOUSE_USER="${CLICKHOUSE_USER:-default}"
 export CLICKHOUSE_PASSWORD="${CLICKHOUSE_PASSWORD:-}"
@@ -34,9 +69,9 @@ export CLICKHOUSE_DB="${CLICKHOUSE_DB:-wspr}"
 # ==============================================================================
 # 2. STORAGE PATHS (RAID-0 NVMe Optimized)
 # ==============================================================================
-export WSPR_DATA_DIR="${WSPR_DATA_DIR:-/mnt/ai-stack/wspr-data}"
-export SOLAR_DATA_DIR="${SOLAR_DATA_DIR:-/mnt/ai-stack/solar-data}"
-export CLICKHOUSE_DATA_DIR="${CLICKHOUSE_DATA_DIR:-/mnt/ai-stack/clickhouse}"
+export WSPR_DATA_DIR="${WSPR_DATA_DIR:-/mnt/wspr-data}"
+export SOLAR_DATA_DIR="${SOLAR_DATA_DIR:-/mnt/solar-data}"
+export CLICKHOUSE_DATA_DIR="${CLICKHOUSE_DATA_DIR:-/var/lib/clickhouse}"
 
 # Sub-directories (derived from base paths)
 export WSPR_RAW_DIR="${WSPR_DATA_DIR}/raw"
@@ -65,5 +100,5 @@ if [[ $- == *i* ]]; then
     printf "  WSPR Data.......: %s\n" "$WSPR_DATA_DIR"
     printf "  Solar Data......: %s\n" "$SOLAR_DATA_DIR"
     printf "  ClickHouse Data.: %s\n" "$CLICKHOUSE_DATA_DIR"
-    printf "  ClickHouse Host.: %s:%s\n" "$CLICKHOUSE_HOST" "$CLICKHOUSE_PORT"
+    printf "  ClickHouse Host.: %s:%s\n" "$CH_HOST" "$CLICKHOUSE_PORT"
 fi
