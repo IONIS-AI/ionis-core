@@ -75,9 +75,16 @@ size is the sampling target, not a coincidence.
 | `wspr.gold_continuous` | 10.00M | `wspr.bronze` ⋈ `solar.bronze`, continuous-time sample | `populate_continuous.sh` | `14-training_continuous.sql` |
 | `wspr.gold_v6` | 10.00M | `wspr.gold_continuous`, cleaned | `populate_v6_clean.sh` | `15-training_v6_clean.sql` |
 
-**There is no silver layer, and the pipeline is `bronze → gold`.** `wspr.silver` was retired
-2026-09-22: nothing wrote it but a hand-run unpackaged CUDA job, and no gold script referenced
-it. The medallion diagram in several documents described a design, not the build.
+**There is no silver layer, and the pipeline is `bronze → gold`.** `wspr.silver` was dropped
+2026-09-22 holding zero rows.
+
+It was probably not always empty — `ionis-docs` recorded a clean-slate QA rebuild on 2026-02-07
+producing 4,430,000,000 rows. ClickHouse's `part_log` and `query_log` only retain back to
+2026-09-06, so when or how it emptied cannot be established now. **That a table could shed four
+billion rows and go unnoticed for seven months is the finding, not a gap in it.** It could,
+because nothing read it: the only writer was a hand-run CUDA job that is not packaged and has no
+unit, and not one gold script referenced it. The medallion diagram in several documents described
+a design, not the build.
 
 ## 4. Reference and lookup
 
