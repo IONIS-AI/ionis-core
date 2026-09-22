@@ -1,0 +1,56 @@
+-- =============================================================================
+-- File.........: 38-wspr_bronze_uniform.sql
+-- Description..: wspr.bronze restricted to the minutes that are complete for all time
+-- Engine.......: View (no storage)
+-- Population...: n/a -- derived from wspr.bronze at query time
+--
+-- THIS VIEW EXISTED IN PRODUCTION FOR SEVENTEEN DAYS WITH NO DDL AND NO DOCS.
+-- It was created by hand on 2026-09-05 during the backfill recovery and only
+-- surfaced in the 2026-09-22 data audit, which had to reverse-engineer it from
+-- SHOW CREATE. That is the failure this file closes: an object that silently
+-- changes what a query means must be in the schema, not in someone's history.
+--
+-- WHAT IT IS FOR
+--
+-- Since 2023-10-16 wsprnet.org's monthly CSV export omits most spots in the first
+-- ~10 minutes of every hour. Retention measured per 2-minute WSPR slot:
+--
+--     :00  0.9%   :02  0.8%   :04  1.4%   :06 13.3%   :08 69.1%   :10+ 100.0%
+--
+-- That ramp is an upload-latency cutoff: receivers upload a minute or two after
+-- each transmission window, and the export reads its window before the late
+-- arrivals land. By :10 everything has arrived, so :10-:58 is byte-perfect for
+-- the entire history of the table.
+--
+-- It went unseen for about three years because hourly totals look completely
+-- normal. The deficit only appears when you group by minute-of-hour -- which is
+-- exactly why a view is the right remedy: the defect is invisible to the shape of
+-- query that would otherwise catch it.
+--
+-- WHEN TO USE IT
+--
+-- Any hour-of-day, diurnal, or seasonal analysis spanning 2023-10 .. 2025-05.
+-- Over that window wspr.bronze under-counts the first ten minutes of every hour,
+-- and a GROUP BY hour reads it as a real propagation dip. It is not one.
+--
+-- cmd/wspr-backfill recovers the missing spots from wspr.live, and has been run
+-- for only part of the affected era (2025-01, and partially 2025-02 and 2025-05).
+-- 2023-11 .. 2024-12 and 2025-03 .. 2025-04 remain depleted -- measured at 15-27%
+-- of the adjacent complete window. Until that backfill finishes, this view is the
+-- only correct source for time-of-day work over those months.
+--
+-- WHEN NOT TO USE IT
+--
+-- Totals, coverage, and anything where completeness of the full hour is not the
+-- question. The view discards ~17% of rows by construction, including rows that
+-- are perfectly good for 2026 and for everything before 2023-10.
+--
+-- RETIREMENT: when the backfill has covered 2023-10 .. 2025-05 and minute 0-9
+-- volume matches minute 10-19 across the span, this view becomes unnecessary.
+-- Verify with the query in docs/DATA-DICTIONARY.md section 5 before dropping it.
+-- =============================================================================
+
+CREATE VIEW IF NOT EXISTS wspr.bronze_uniform AS
+SELECT *
+FROM wspr.bronze
+WHERE toMinute(timestamp) >= 10;

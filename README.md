@@ -21,38 +21,57 @@ ionis-env          /usr/bin/                        Environment variables setup
 ### Database Schemas
 
 ```text
-DDL                                Database     Creates
-01-wspr_schema_v2.sql              wspr         bronze, v_schema_contract, v_data_integrity
-02-solar_indices.sql               solar        bronze
-03-solar_silver.sql                solar        v_daily_indices
-04-data_mgmt.sql                   data_mgmt    config
-05-geo_functions.sql               geo          v_grid_validation_example
-06-lab_versions.sql                data_mgmt    lab_versions, v_lab_versions_latest
-07-callsign_grid.sql               wspr         callsign_grid
-10-rbn_schema_v1.sql               rbn          bronze
-11-contest_schema_v1.sql           contest      bronze
-12-signatures_v1.sql               wspr         signatures_v1
-13-training_stratified.sql         wspr         gold_stratified
-14-training_continuous.sql         wspr         gold_continuous
-15-training_v6_clean.sql           wspr         gold_v6
-16-validation_step_i.sql           validation   step_i_paths, step_i_voacap
-17-balloon_callsigns.sql           wspr         balloon_callsigns (V1 DEPRECATED)
-18-validation_quality_test.sql     validation   quality_test_paths, quality_test_voacap
-19-dxpedition_synthesis.sql        dxpedition   catalog; rbn: dxpedition_paths
-20-signatures_v2_terrestrial.sql   wspr         signatures_v2_terrestrial
-21-balloon_callsigns_v2.sql        wspr         balloon_callsigns_v2 (date-level)
-22-pskr_schema_v1.sql              pskr         bronze
-23-contest_signatures.sql          contest      signatures
-24-rbn_signatures.sql              rbn          signatures
-25-live_conditions.sql             wspr         live_conditions
-26-validation_model_results.sql    validation   model_results
-27-mode_thresholds.sql             validation   mode_thresholds
-28-pskr_ingest_log.sql             pskr         ingest_log
-29-rbn_dxpedition_signatures.sql   rbn          dxpedition_signatures
-30-rbn_ingest_log.sql              rbn          ingest_log
-31-wspr_ingest_log.sql             wspr         ingest_log
-32-contest_ingest_log.sql          contest      ingest_log
+DDL                               Creates
+-----------------------------------------
+01-wspr_schema_v2.sql             wspr: bronze, v_schema_contract, v_data_integrity; (function): fn_wspr_validate_schema_v2, fn_wspr_expected_struct_size
+02-solar_indices.sql              solar: bronze
+03-solar_silver.sql               solar: v_daily_indices
+04-data_mgmt.sql                  data_mgmt: config
+05-geo_functions.sql              geo: v_grid_validation_example
+06-lab_versions.sql               data_mgmt: lab_versions, v_lab_versions_latest
+07-callsign_grid.sql              wspr: callsign_grid
+10-rbn_schema_v1.sql              rbn: bronze
+11-contest_schema_v1.sql          contest: bronze
+12-signatures_v1.sql              wspr: signatures_v1
+13-training_stratified.sql        wspr: gold_stratified
+14-training_continuous.sql        wspr: gold_continuous
+15-training_v6_clean.sql          wspr: gold_v6
+16-validation_step_i.sql          validation: step_i_paths, step_i_voacap
+17-rbn_ingest_log.sql             rbn: ingest_log
+18-validation_quality_test.sql    validation: quality_test_paths, quality_test_voacap
+19-dxpedition_synthesis.sql       dxpedition: catalog; rbn: dxpedition_paths
+20-signatures_v2_terrestrial.sql  wspr: signatures_v2_terrestrial
+21-balloon_callsigns_v2.sql       wspr: balloon_callsigns_v2
+22-pskr_schema_v1.sql             pskr: bronze
+23-contest_signatures.sql         contest: signatures
+24-rbn_signatures.sql             rbn: signatures
+25-live_conditions.sql            wspr: live_conditions
+26-validation_model_results.sql   validation: model_results
+27-mode_thresholds.sql            validation: mode_thresholds
+28-pskr_ingest_log.sql            pskr: ingest_log
+29-rbn_dxpedition_signatures.sql  rbn: dxpedition_signatures
+30-wspr_ingest_log.sql            wspr: ingest_log
+31-contest_ingest_log.sql         contest: ingest_log
+32-training_runs.sql              training: runs, epochs
+33-solar_dscovr.sql               solar: dscovr
+34-solar_iri_lookup.sql           solar: iri_lookup
+35-dxpedition_contest_paths.sql   validation: dxpedition_contest_paths
+36-pskr_signatures.sql            pskr: signatures
+37-contest_quarantine.sql         contest: quarantine
+38-wspr_bronze_uniform.sql        wspr: bronze_uniform
+39-validation_sfi_audit.sql       validation: sfi_audit_runs, tst900_results
+40-contest_log_metadata.sql       contest: log_metadata
 ```
+
+**Every table, what writes it, what reads it, and how it is derived:
+[docs/DATA-DICTIONARY.md](docs/DATA-DICTIONARY.md).** That file is authoritative; if another
+document disagrees with it, that document is wrong.
+
+The table above is generated from `src/*.sql`, and `scripts/verify_schema_complete.sh` checks it
+against the live database in both directions — a table with no DDL here, or DDL here with no
+table. Run it after any schema change. **Everything in `src/` is applied**: the `Makefile` and
+`ionis-core.spec` both glob `src/*.sql`, so deleting a table without deleting its DDL means the
+next apply brings it straight back.
 
 ## Installation
 
