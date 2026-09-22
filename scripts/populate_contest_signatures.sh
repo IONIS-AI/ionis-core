@@ -10,13 +10,13 @@
 #
 # Grid resolution via wspr.callsign_grid (Rosetta Stone, 3.64M callsigns).
 # Distance and azimuth computed from 4-char grid centroids.
-# Solar data joined from solar.bronze (2000-2026 coverage).
+# Solar data joined from solar.silver (2000-2026 coverage).
 #
 # Prerequisites:
 #   - contest.signatures table exists (23-contest_signatures.sql)
 #   - contest.bronze populated (195M QSOs)
 #   - wspr.callsign_grid populated (>= 3M rows)
-#   - solar.bronze populated (2000-2026)
+#   - solar.silver populated (2000-2026)
 #
 # Usage:
 #   bash populate_contest_signatures.sh
@@ -47,7 +47,7 @@ if [ "$CG_COUNT" -lt 3000000 ]; then
 fi
 
 SOLAR_MIN=$(clickhouse-client --host "$CH_HOST" --query \
-    "SELECT min(date) FROM solar.bronze WHERE observed_flux > 0")
+    "SELECT min(date) FROM solar.silver WHERE observed_flux > 0")
 if [ "$SOLAR_MIN" \> "2001-01-01" ]; then
     echo "WARNING: Solar data starts at ${SOLAR_MIN} — contest data goes back to 2005"
     echo "Run solar-backfill -start 2000-01-01 first for full coverage."
@@ -120,8 +120,8 @@ for band in 102 103 104 105 106 107 108 109 110 111; do
             1.0                                 AS reliability,
 
             -- Solar conditions
-            avg(sol.observed_flux)              AS avg_sfi,
-            avg(sol.kp_index)                   AS avg_kp,
+            avg(sol.sfi_observed)              AS avg_sfi,
+            avg(sol.kp)                   AS avg_kp,
 
             -- Distance from 4-char grid centroids (km)
             toUInt32(avg(
@@ -175,9 +175,8 @@ for band in 102 103 104 105 106 107 108 109 110 111; do
         FROM contest.bronze c
         INNER JOIN wspr.callsign_grid cg_tx ON c.call_1 = cg_tx.callsign
         INNER JOIN wspr.callsign_grid cg_rx ON c.call_2 = cg_rx.callsign
-        LEFT JOIN solar.bronze sol
-            ON toDate(c.timestamp) = sol.date
-            AND intDiv(toHour(c.timestamp), 3) = intDiv(toHour(sol.time), 3)
+        LEFT JOIN solar.silver sol
+            ON toStartOfInterval(c.timestamp, INTERVAL 3 HOUR) = sol.observed_at
         WHERE c.band = ${band}
           AND c.mode IN ('PH', 'RY')
           AND cg_tx.grid_4 != ''

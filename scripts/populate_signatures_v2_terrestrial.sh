@@ -26,7 +26,7 @@
 # Prerequisites:
 #   - wspr.signatures_v2_terrestrial table exists (20-signatures_v2_terrestrial.sql)
 #   - wspr.bronze populated (10.8B rows)
-#   - solar.bronze populated (76K+ rows)
+#   - solar.silver populated (76K+ rows)
 #   - wspr.balloon_callsigns_v2 populated (scripts/populate_balloon_callsigns.sh)
 #   - wspr.callsign_grid populated (>= 3M rows — required for balloon detection)
 #
@@ -118,14 +118,13 @@ for band in 102 103 104 105 106 107 108 109 110 111; do
             count()                          AS spot_count,
             stddevPop(s.snr)                 AS snr_std,
             countIf(s.snr > -20) / count()   AS reliability,
-            avg(sol.observed_flux)           AS avg_sfi,
-            avg(sol.kp_index)                AS avg_kp,
+            avg(sol.sfi_observed)           AS avg_sfi,
+            avg(sol.kp)                AS avg_kp,
             avg(s.distance)                  AS avg_distance,
             avg(s.azimuth)                   AS avg_azimuth
         FROM wspr.bronze s
-        LEFT JOIN solar.bronze sol
-            ON toDate(s.timestamp) = sol.date
-            AND intDiv(toHour(s.timestamp), 3) = intDiv(toHour(sol.time), 3)
+        LEFT JOIN solar.silver sol
+            ON toStartOfInterval(s.timestamp, INTERVAL 3 HOUR) = sol.observed_at
         WHERE s.band = ${band}
           AND s.distance >= 500
           AND replaceAll(toString(s.callsign), '\0', '')

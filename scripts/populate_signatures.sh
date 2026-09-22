@@ -18,7 +18,7 @@
 # Prerequisites:
 #   - wspr.signatures_v1 table exists (12-signatures_v1.sql)
 #   - wspr.bronze populated (10.8B rows)
-#   - solar.bronze populated (76K+ rows)
+#   - solar.silver populated (76K+ rows)
 #
 # Expected result: ~93.8M signature rows (115:1 compression from raw spots)
 # Total time on 9975WX (128-thread, 10.8B rows): ~3 min 10 sec
@@ -71,14 +71,13 @@ for bi in "${!BANDS[@]}"; do
             count()                          AS spot_count,
             stddevPop(s.snr)                 AS snr_std,
             countIf(s.snr > -20) / count()   AS reliability,
-            avg(sol.observed_flux)           AS avg_sfi,
-            avg(sol.kp_index)                AS avg_kp,
+            avg(sol.sfi_observed)           AS avg_sfi,
+            avg(sol.kp)                AS avg_kp,
             avg(s.distance)                  AS avg_distance,
             avg(s.azimuth)                   AS avg_azimuth
         FROM wspr.bronze s
-        LEFT JOIN solar.bronze sol
-            ON toDate(s.timestamp) = sol.date
-            AND intDiv(toHour(s.timestamp), 3) = intDiv(toHour(sol.time), 3)
+        LEFT JOIN solar.silver sol
+            ON toStartOfInterval(s.timestamp, INTERVAL 3 HOUR) = sol.observed_at
         WHERE s.band = ${band}
           AND s.distance >= 500
         GROUP BY tx_grid_4, rx_grid_4, s.band, hour, month
