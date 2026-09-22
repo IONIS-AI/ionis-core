@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.4
+Version:        4.0.5
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -93,6 +93,18 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Tue Sep 22 2026 Bob <bob@ipa.home.arpa> - 4.0.5-1
+- contest.parse_rejects: new table holding every QSO line the parser could not
+  read -- file, line number, category, full parser error and the raw line. A skip
+  was previously a counter printed to stdout and nothing else, which is how three
+  parser defects stayed hidden. reason is a bounded category and detail carries
+  the offending value, so the LowCardinality column stays low-cardinality.
+- contest.v_parse_rejects_by_reason: the review query. A reason spread thinly is
+  bad source data; one concentrated in a contest is a parser assumption that does
+  not hold there.
+- contest.ingest_log gains skipped_rows: the DURABLE per-file count, never capped,
+  where parse_rejects samples at 100 lines per file.
+
 * Tue Sep 22 2026 Bob <bob@ipa.home.arpa> - 4.0.4-1
 - REQUIRED alongside ionis-apps 4.2.0. solar.bronze is superseded by four
   per-source tables; the 4.0.3 populate scripts still reference it and will FAIL
