@@ -9,6 +9,18 @@ was not in the room.
 
 Nothing in v1.0 changes while this runs. v1.0 stays the published collection until v2 replaces it.
 
+## The live board
+
+**https://claude.ai/artifact/DRngCtf22nyFkCqKW4qAyq** — Judge's status view of this plan.
+
+**This file is the record; the board is the window.** When they disagree, this file wins and the
+board is corrected. Specs, gates and sign-offs are reviewed and versioned here, in git, because
+that is where chain of custody lives — a hosted page has no diff, no PR, and no signed authorship.
+
+**Updating it:** republish to that URL. An agent that publishes a new board without passing this
+URL creates a *second* artifact, and Judge's bookmark then silently tracks a stale page. The link
+lives in this file so any session can find it.
+
 ---
 
 ## Status board
