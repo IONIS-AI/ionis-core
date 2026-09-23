@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.6
+Version:        4.0.7
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,9 +100,15 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.7-1
+- Fix the 4.0.6 changelog: it wrote %%install unescaped at the start of a line, so
+  rpm read it as a second %%install section and the spec stopped parsing --
+  "error: line 105: second %%install". v4.0.6 was tagged and could not be built.
+  A changelog is prose to a human and spec syntax to rpm; a leading %% is the latter.
+
 * Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.6-1
 - Package the audits. verify_schema_complete.sh, verify_contest_ingest.sh and
-  verify_dictionary_complete.sh were installed by nothing -- the %install loops
+  verify_dictionary_complete.sh were installed by nothing -- the %%install loops
   matched only populate_*, so the scripts existed in a git checkout and nowhere
   else. An audit that gates a tag has to be on the host where the gate runs.
 - contest.parse_rejects + ingest_log.skipped_rows (from 4.0.5) and the two new
