@@ -70,7 +70,15 @@ for dir in "$SRC"/*/; do
   # them in cq-wpx alone, so the archive total this script compares against was low by
   # that much. cq-wpx/2020cw/lz9w.log is the clearest case -- 10,503 records, every one
   # indented, and the anchored pattern read the file as empty.
-  archive=$(find "$dir" -type f -print0 2>/dev/null | xargs -0 grep -chE '^[[:space:]]*QSO:' 2>/dev/null | paste -sd+ | bc)
+  # -i, because the ingester upper-cases the line before matching and therefore
+  # accepts "qso:" and "Qso:". A case-sensitive count reads those files as short and
+  # the series then reconciles NEGATIVE -- which looks like double-ingestion and is
+  # not. cq-ww alone holds 1,284 such lines, and its residual was exactly -1,284.
+  #
+  # Match the PROGRAM's rule, not a reasonable-looking approximation of it. This is
+  # the third time this pattern has been wrong in the same script: first the column
+  # anchor, then the whitespace class, now case.
+  archive=$(find "$dir" -type f -print0 2>/dev/null | xargs -0 grep -chiE '^[[:space:]]*qso:' 2>/dev/null | paste -sd+ | bc)
   archive=${archive:-0}
 
   # The database side, keyed by the source path rather than the contest label: a
@@ -78,7 +86,16 @@ for dir in "$SRC"/*/; do
   # CQ-WW-CW and CQ-WW-SSB), and the file path is what the archive count covers.
   bronze=$(ch "SELECT count() FROM contest.bronze WHERE source LIKE '${series}/%'")
   quar=$(ch   "SELECT count() FROM contest.quarantine WHERE file_path LIKE '${series}/%'")
-  skip=$(ch   "SELECT sum(skipped_rows) FROM contest.ingest_log WHERE file_path LIKE '${series}/%'")
+  # FINAL, because ingest_log is a ReplacingMergeTree and collapsing is a background
+  # merge, not a write-time guarantee. Between a run finishing and its merges settling,
+  # the same file_path can be present more than once -- 7 such rows were sitting in the
+  # table while this was written.
+  #
+  # Without FINAL a duplicated row adds its skipped_rows twice, which SHRINKS the
+  # residual and under-reports loss. That is the wrong direction for a gate: it turns a
+  # series that lost records into one that appears to balance. It happened to be
+  # harmless on 2026-09-23 only because the duplicated rows carried skipped_rows = 0.
+  skip=$(ch   "SELECT sum(skipped_rows) FROM contest.ingest_log FINAL WHERE file_path LIKE '${series}/%'")
   bronze=${bronze:-0}; quar=${quar:-0}; skip=${skip:-0}
   [ "$skip" = "\\N" ] && skip=0
 

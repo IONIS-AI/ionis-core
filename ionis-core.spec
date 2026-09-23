@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.7
+Version:        4.0.8
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,18 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.8-1
+- verify_contest_ingest.sh reads ingest_log without FINAL. It is a
+  ReplacingMergeTree, so a file_path can appear twice until a background merge
+  collapses it, and a duplicated row adds its skipped_rows twice -- shrinking the
+  residual and under-reporting loss. Wrong direction for a gate.
+- verify_contest_ingest.sh counted archive records case-sensitively while the ingester
+  upper-cases the line before matching, so lowercase "qso:" records were invisible.
+  1,284 such lines in cq-ww alone, and its residual came out at exactly -1,284 -- a
+  NEGATIVE residual, which reads as double-ingestion and is not. Third wrong pattern in
+  this one script: column anchor, then whitespace class, now case. Match the PROGRAM's
+  rule, not a reasonable-looking approximation of it.
+
 * Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.7-1
 - Fix the 4.0.6 changelog: it wrote %%install unescaped at the start of a line, so
   rpm read it as a second %%install section and the spec stopped parsing --
