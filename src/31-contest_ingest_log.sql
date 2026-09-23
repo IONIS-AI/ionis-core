@@ -12,11 +12,10 @@
 --   - Contest logs are static (historical archives) — no file_size growth
 --   - row_count=0 distinguishes primed entries (bootstrap) from real loads
 --   - hostname tracks which host performed the ingest (multi-host safety)
---   - skipped_rows is the DURABLE per-file count of unreadable QSO lines. It used
---     to exist only as a running total printed to stdout, so after a 99-minute run
---     over 823K files there was no way to ask which file had dropped anything. The
---     lines themselves go to contest.parse_rejects (capped per file); this count is
---     the true total and is never capped.
+--   - skipped_rows is the per-file count of QSO lines that could not be read. Since
+--     2026-09-23 those lines are NOT skipped: they are in contest.bronze with
+--     parse_error set (see contest.parse_rejects, a view), and row_count includes
+--     them. The column keeps its name so existing readers do not break.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS contest.ingest_log (

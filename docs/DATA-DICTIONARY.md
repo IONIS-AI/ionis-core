@@ -37,6 +37,20 @@ Everything else is derived and rebuildable:
 - **bronze** — faithful. Not cleansed, not corrected, not deduplicated. A publisher serving a
   malformed file is a *fact about the publisher*, and bronze is where facts about sources live.
   Clean at ingest and the evidence is gone.
+
+  **Bronze gets everything — ingest is packaging** (Judge, 2026-09-23). The archive is
+  upstream's tarball: the same bytes their site or API serves, kept locally so they need not
+  be downloaded again, and never edited. We are pushing *their* upstream into *our* system, so
+  ingest does whatever it takes to take in **all** of what they send — good, bad or otherwise —
+  the way a distribution packages a project it does not control. Every record in the archive
+  becomes one bronze row. Nothing is skipped and nothing is held in a side table.
+
+  What it took to get a record in is carried on the row, as a package carries its patches: the
+  **raw record** as the file holds it, the **named patches** applied to read it (a missing space,
+  a legal-but-unusual notation), and **facts found on the way** (dated outside its directory's
+  year; unreadable, with the parser's error). A patch makes a record *read*; it never changes
+  what it *says*. Correcting a value and removing duplicates are silver's work. `contest.bronze`
+  is the first source built this way — see its DDL.
 - **silver** — **an extract, not a repair.** It takes bronze as-is and selects what we want in
   silver. It requires nothing of bronze and asks bronze to change nothing. The selection
   criterion is written in that table's DDL, not inferred from the code that builds it.
@@ -140,7 +154,7 @@ plan (KI7MT/fleet-ops#309, phase 3) along with the same problem in `solar.dscovr
 | `wspr.bronze` | 2008-03-11 | 2026-09-21 | see §5 — the first 10 minutes of each hour are incomplete for 2023-10 … 2025-04 |
 | `pskr.bronze` | 1970-01-01 | 2026-09-22 | 74 rows at epoch zero — malformed upstream timestamps, not a gap |
 | `rbn.bronze` | 2009-02-21 | 2026-09-20 | |
-| `contest.bronze` | 1970-01-01 | **2088-11-30** | 86 rows outside any plausible window. Real span is 1996-11-25 … 2025-08-31 |
+| `contest.bronze` | 1970-01-01 | **2088-11-30** | As sent: logger clocks set to the wrong year are stored as dated and tagged `off-declared-year`; years DateTime cannot hold (0201, 3000) are NULL with `timestamp-unrepresentable`. Real span is 1996-11-25 … 2025-08-31 |
 | `solar.kp_bronze` | 1932-01-01 | 2026-09-21 | definitive GFZ archive; zero incomplete months in 94 years |
 | `solar.sfi_bronze` | 2004-10-28 | 2026-09-22 | Penticton publishes no earlier |
 | `solar.ssn_bronze` | 1818-01-01 | 2026-08-31 | `Date32` — `Date` would wrap everything before 1970 |
@@ -263,8 +277,8 @@ question than the one asked.
 | `rbn.ingest_log` | 6.41K | as above |
 | `pskr.ingest_log` | 5.36K | as above; written by `pskr-ingest` |
 | `contest.ingest_log` | 495.99K | as above; one row per Cabrillo log |
-| `contest.quarantine` | 537.15K | QSOs that PARSED but fell outside their directory's declared year. 535,467 of them are `cq-wpx-rtty` 2017 logs republished by the publisher under 2018 — every one verified to exist already in bronze under 2017, so they are duplicates being held, not data being withheld. The remainder is year-field corruption (2080, 2106, 1970). |
-| `contest.parse_rejects` | 721 | QSO lines the parser could NOT read — file, line number, category, full parser error, raw line. Written by `contest-ingest --reject-table`, capped at 100 samples per file; the uncapped count is `contest.ingest_log.skipped_rows`. Distinct from quarantine: that holds a well-formed QSO, this holds a line that never became one. `45-contest_parse_rejects.sql` |
+| `contest.parse_rejects` | view | **A view over `contest.bronze`** (`parse_error != ''`): the QSO lines the parser could not read, with file, line number, reason category, full error and raw line. Until 2026-09-23 this was a capped side table and the lines were not in bronze; now bronze holds every line and this is a lens on it. `47-contest_parse_rejects.sql` |
+| ~~`contest.quarantine`~~ | retired 2026-09-23 | Held QSOs dated outside their directory's year. Those rows are now in `contest.bronze` as sent, tagged `off-declared-year` — including the 535,467 `cq-wpx-rtty` 2017 logs the publisher serves under 2018, which silver must deduplicate. DDL `37-contest_quarantine.sql` deleted. |
 | `rbn.dxpedition_paths` | 3.89M | DXpedition RBN spot paths, derived from `rbn.bronze` by `populate_dxpedition_paths.sh` and `derive_dxpedition_windows.py`. `19-dxpedition_synthesis.sql` |
 | `validation.step_i_voacap` | 0 | VOACAP predictions for the Step I recall head-to-head, populated by `voacap_batch_runner.py` (ionis-training). **Never run** — see §8. `16-validation_step_i.sql` |
 | `training.runs` | 22 | One row per training run — hyperparameters, outcome |
@@ -312,7 +326,6 @@ is the point:
 
 | Table | Why empty | Action |
 |---|---|---|
-| `contest.quarantine` | reload has not run | fills on the contest reload |
 | `data_mgmt.config` | never adopted | decide: use it or drop it |
 | `data_mgmt.lab_versions` | `ionis-db-init` writes it, has not been run since the schema was applied | populate on next init |
 | `validation.quality_test_voacap` | VOACAP comparison not yet run | pending |
