@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.8
+Version:        4.1.0
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,16 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.1.0-1
+- contest.bronze gets every QSO: line upstream served (Judge: ingest is packaging).
+  Adds file_path, line_no, declared_year, raw_line, patches and parse_error;
+  timestamp, frequency and band become Nullable; archive order (source, file_path,
+  line_no), partitioned by declared_year. Requires ionis-apps >= 4.3.0.
+- contest.quarantine retired: its rows are in bronze tagged off-declared-year.
+- contest.parse_rejects is now a view over bronze, uncapped.
+- verify_contest_ingest.sh checks archive == bronze; no quarantine or skip terms.
+- VERSION was stuck at 3.3.0 while the spec moved to 4.0.x, so `make install`
+  stamped 3.3.0 into every script it installed. Now matches the spec.
 * Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.8-1
 - verify_contest_ingest.sh reads ingest_log without FINAL. It is a
   ReplacingMergeTree, so a file_path can appear twice until a background merge

@@ -13,17 +13,16 @@
 #
 # So the check is an identity, per contest, against the files themselves:
 #
-#     archive QSO: lines  ==  bronze rows  +  quarantined  +  skipped
+#     archive QSO: lines  ==  bronze rows
 #
-# Each QSO line has exactly one fate. It parses and lands in bronze; or it parses and
-# the date guard holds it in quarantine; or it does not parse and is skipped, counted
-# in ingest_log.skipped_rows and sampled in parse_rejects. Nothing else may happen to
-# it. A contest that does not balance has lost rows somewhere between the file and
-# the table, and the residual says how many.
-#
-# skipped_rows is used rather than counting parse_rejects because parse_rejects is
-# capped at 100 lines per file; the watermark count is not capped and is therefore
-# the one that can appear in an identity.
+# Bronze takes every QSO: line upstream served, good, bad or otherwise (Judge,
+# 2026-09-23). A line that parses lands with its columns filled; one that does not
+# lands with parse_error set and raw_line holding its content; one dated outside its
+# directory's year lands as sent, tagged off-declared-year. There is no quarantine
+# and no skip any more, so there is nothing to add back: a contest that does not
+# balance has lost lines between the file and the table, and the residual says how
+# many. PARSE-FAILED and OFF-YEAR are shown for review; they are part of BRONZE, not
+# terms of the identity.
 #
 # AND THIS IS WHY THE RESIDUAL IS THE ONLY CHECK THAT FINDS EVERYTHING. A file that
 # fails ENTIRELY is left unwatermarked for retry, so it writes no ingest_log row at
@@ -49,11 +48,11 @@ ch() { clickhouse-client --host "$CH_HOST" -q "$1" 2>/dev/null; }
 
 [ -d "$SRC" ] || { echo "no archive at $SRC"; exit 2; }
 
-printf '%-16s %14s %14s %11s %9s %12s\n' SERIES ARCHIVE BRONZE QUARANTINE SKIPPED RESIDUAL
+printf '%-16s %14s %14s %12s %9s %10s\n' SERIES ARCHIVE BRONZE PARSE-FAILED OFF-YEAR RESIDUAL
 printf '%s\n' "----------------------------------------------------------------------------------"
 
 rc=0
-total_a=0; total_b=0; total_q=0; total_s=0
+total_a=0; total_b=0; total_f=0; total_o=0
 
 for dir in "$SRC"/*/; do
   series=$(basename "$dir")
@@ -84,44 +83,34 @@ for dir in "$SRC"/*/; do
   # The database side, keyed by the source path rather than the contest label: a
   # series directory and a contest ID are not the same thing (cq-ww holds both
   # CQ-WW-CW and CQ-WW-SSB), and the file path is what the archive count covers.
-  bronze=$(ch "SELECT count() FROM contest.bronze WHERE source LIKE '${series}/%'")
-  quar=$(ch   "SELECT count() FROM contest.quarantine WHERE file_path LIKE '${series}/%'")
-  # FINAL, because ingest_log is a ReplacingMergeTree and collapsing is a background
-  # merge, not a write-time guarantee. Between a run finishing and its merges settling,
-  # the same file_path can be present more than once -- 7 such rows were sitting in the
-  # table while this was written.
-  #
-  # Without FINAL a duplicated row adds its skipped_rows twice, which SHRINKS the
-  # residual and under-reports loss. That is the wrong direction for a gate: it turns a
-  # series that lost records into one that appears to balance. It happened to be
-  # harmless on 2026-09-23 only because the duplicated rows carried skipped_rows = 0.
-  skip=$(ch   "SELECT sum(skipped_rows) FROM contest.ingest_log FINAL WHERE file_path LIKE '${series}/%'")
-  bronze=${bronze:-0}; quar=${quar:-0}; skip=${skip:-0}
-  [ "$skip" = "\\N" ] && skip=0
+  read -r bronze failed offyear < <(ch "SELECT count(), countIf(parse_error != ''),
+      countIf(has(patches, 'off-declared-year'))
+      FROM contest.bronze WHERE source LIKE '${series}/%' FORMAT TSV")
+  bronze=${bronze:-0}; failed=${failed:-0}; offyear=${offyear:-0}
 
-  residual=$(( archive - bronze - quar - skip ))
+  residual=$(( archive - bronze ))
   mark=""
   if [ "$residual" -ne 0 ]; then mark="  <-- LOST"; rc=1; fi
 
-  printf '%-16s %14s %14s %11s %9s %12s%s\n' \
-    "$series" "$archive" "$bronze" "$quar" "$skip" "$residual" "$mark"
+  printf '%-16s %14s %14s %12s %9s %10s%s\n' \
+    "$series" "$archive" "$bronze" "$failed" "$offyear" "$residual" "$mark"
 
   total_a=$((total_a+archive)); total_b=$((total_b+bronze))
-  total_q=$((total_q+quar));    total_s=$((total_s+skip))
+  total_f=$((total_f+failed));  total_o=$((total_o+offyear))
 done
 
 printf '%s\n' "----------------------------------------------------------------------------------"
-printf '%-16s %14s %14s %11s %9s %12s\n' TOTAL "$total_a" "$total_b" "$total_q" "$total_s" \
-  "$(( total_a - total_b - total_q - total_s ))"
+printf '%-16s %14s %14s %12s %9s %10s\n' TOTAL "$total_a" "$total_b" "$total_f" "$total_o" \
+  "$(( total_a - total_b ))"
 
 if [ "$rc" -eq 0 ]; then
   echo
-  echo "every series balances: archive == bronze + quarantine + skipped"
+  echo "every series balances: archive == bronze"
 else
   echo
   echo "AT LEAST ONE SERIES DOES NOT BALANCE."
-  echo "A positive residual is QSO lines the archive holds and nothing accounts for --"
-  echo "not ingested, not quarantined, not even recorded as skipped. Start with"
-  echo "contest.v_parse_rejects_by_reason, then the reject log for file-level failures."
+  echo "A positive residual is QSO lines the archive holds that bronze does not -- a"
+  echo "file that failed whole (see the ingester's reject log), or a parser that stops"
+  echo "reading early. A negative one is a line ingested twice."
 fi
 exit $rc
