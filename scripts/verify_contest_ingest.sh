@@ -60,7 +60,17 @@ for dir in "$SRC"/*/; do
   [ -n "$FILTER" ] && [ "$series" != "$FILTER" ] && continue
 
   # The archive side: count QSO: lines under this series, one pass.
-  archive=$(find "$dir" -type f -print0 2>/dev/null | xargs -0 grep -ch '^QSO:' 2>/dev/null | paste -sd+ | bc)
+  # ^[[:space:]]*QSO: -- NOT ^QSO:. Some logs indent their records ("  QSO:  3532 CW
+  # ..."), and a column-anchored pattern silently counts them as zero. The ingester has
+  # always handled it, because parseFile does strings.TrimSpace before matching; it was
+  # the MEASUREMENTS that were wrong, which is worse -- a reconciliation that undercounts
+  # the archive reports a balanced series that is not.
+  #
+  # Measured 2026-09-23: 239,685 QSO lines across the corpus are indented, 237,226 of
+  # them in cq-wpx alone, so the archive total this script compares against was low by
+  # that much. cq-wpx/2020cw/lz9w.log is the clearest case -- 10,503 records, every one
+  # indented, and the anchored pattern read the file as empty.
+  archive=$(find "$dir" -type f -print0 2>/dev/null | xargs -0 grep -chE '^[[:space:]]*QSO:' 2>/dev/null | paste -sd+ | bc)
   archive=${archive:-0}
 
   # The database side, keyed by the source path rather than the contest label: a

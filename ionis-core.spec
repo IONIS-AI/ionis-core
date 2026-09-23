@@ -107,6 +107,10 @@ echo "------------------------------------------------------------"
   else. An audit that gates a tag has to be on the host where the gate runs.
 - contest.parse_rejects + ingest_log.skipped_rows (from 4.0.5) and the two new
   audits are the controls for the contest rebuild.
+- verify_contest_ingest.sh counted archive records with ^QSO:, which misses logs that
+  indent them -- 239,685 lines corpus-wide, 237,226 of them in cq-wpx. A reconciliation
+  that undercounts the archive reports a series as balanced when it is not, which is the
+  one failure mode a gate must not have. Archive total was 387,652,077; it is 387,891,762.
 
 * Tue Sep 22 2026 Bob <bob@ipa.home.arpa> - 4.0.5-1
 - contest.parse_rejects: new table holding every QSO line the parser could not
