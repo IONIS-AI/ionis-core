@@ -193,7 +193,90 @@ not a detail. It is what makes the Atlas's three-state requirement — *not inst
 observations for this climatology condition* / *observed closed* — satisfiable mechanically
 instead of by a builder remembering.
 
-## 6. What ships, and under what name
+## 6. Naming — the grain must be in the name
+
+**Nobody can tell from the name what `pskr.signatures` is.** Checked rather than guessed, it is:
+*one row per grid-pair, per band, per UTC hour, per calendar month, aggregated across the entire
+collection era.* That is a **path climatology**. The name carries neither the layer, nor the
+grain, nor the content.
+
+Worse, *"signatures"* is inherited vocabulary from a **retired engine**. It named the CUDA float4
+embeddings; that engine is retired and `wspr.silver`, its destination, was dropped holding zero
+rows. These tables were never embeddings. They are aggregates wearing a dead thing's name, and
+they have been misleading readers ever since.
+
+**v2 does not carry that forward.**
+
+### The convention
+
+```
+<domain>.<layer>_<grain>[_v<n>]
+```
+
+**The rule that does the work: if you cannot state the grain in one sentence a stranger
+understands, you do not know what the table is — and that is the finding, not the name.**
+
+| v1 / lab name | one row is | v2 name |
+|---|---|---|
+| `wspr.signatures_v2_terrestrial` | a path-cell, terrestrial only | `wspr.gold_path_climatology_v2` |
+| `rbn.signatures` | a path-cell | `rbn.gold_path_climatology` |
+| `pskr.signatures` | a path-cell | `pskr.gold_path_climatology` |
+| `contest.signatures` | a path-cell | `contest.gold_path_climatology` |
+| `rbn.dxpedition_signatures` | a path-cell, DXpedition subset | `rbn.gold_dxped_path_climatology` |
+| `wspr.gold_v6` | a training row, denormalized | `wspr.gold_training_obt_v6` |
+| `wspr.gold_stratified` / `_continuous` | a sampled training row | `wspr.gold_training_sample_stratified` / `_continuous` |
+| `solar.silver` | a 3-hour interval, conformed indices | `solar.silver_indices_3h` |
+| `solar.iri_lookup` | an IRI model cell | `solar.gold_iri_climatology` |
+| `solar.dscovr` | a 1-minute L1 solar-wind reading | `solar.bronze_solarwind_1m` |
+| `solar.kp_bronze` | a 3-hour Kp reading | `solar.bronze_kp_3h` |
+| `validation.model_results` | a prediction against an observation | `validation.gold_prediction_vs_observed` |
+
+### Two prefixes that are not layers
+
+This answers a gap `DATA-DICTIONARY.md` §0 still has: its model describes fact data only, and four
+of the nine v1 datasets are not fact data.
+
+| v1 name | v2 name | why |
+|---|---|---|
+| `wspr.callsign_grid` | `dim_callsign_grid` | a dimension |
+| `grid_lookup` | `dim_grid_centroid` | a dimension |
+| solar indices, DSCOVR | `dim_*` where joined as reference | dimensions when used as such |
+| `balloon_callsigns_v2` | `rule_balloon_callsigns` | a **rule input** — it decides what gets excluded |
+
+Dimensions and rule inputs have **no** bronze/silver/gold layer, because they are not
+observations. Forcing them into one is why §0 has no category for them. The layer prefix applies
+to fact data; `dim_` and `rule_` are an orthogonal axis.
+
+### Landing it without breaking the lab
+
+Renaming the live ClickHouse tables touches every populate script, every MCP server and every
+dashboard query. So the two are separated:
+
+- **v2 is a green field and is named correctly from the start** — it costs nothing, because
+  nothing reads it yet.
+- **The ClickHouse rename is a separate staged job**, bridged by
+  `CREATE VIEW <old> AS SELECT * FROM <new>` so nothing breaks on the day it lands.
+
+The published names then become the reference the lab migrates *toward*, rather than legacy names
+leaking into a public artifact and outliving yet another engine.
+
+**Also fixed:** `balloon_callsigns_v2.sqlite` contains a table named `balloon_callsigns`. File and
+table agree in v2.
+
+## 7. What ships
+
+> **The dataset list below is PROVISIONAL.** It inherits v1's nine datasets, which is not a
+> decision anyone has made. Judge, 2026-09-23: *"we haven't fully hashed out what's going into v2
+> yet. We have new solar, we've fixed contests, still need to look at 50 other tables."*
+>
+> The live database holds **62 tables across 12 databases**. Candidates that are new since v1 and
+> would change what the collection *is*: `solar.iri_lookup` (319,455,360 rows of pre-computed IRI
+> model output — a model beside the observations); `validation.model_results` (33,467,572 — IONIS
+> predictions against observation); the three WSPR training sets (10 M each — what makes the model
+> reproducible rather than described); and the rebuilt solar archives, which are curated
+> definitive series rather than IONIS derivatives — **SSN back to 1818, Kp back to 1932**.
+>
+> Settling this list is a prerequisite of v2, not a detail of it.
 
 | artifact | format | consumer |
 |---|---|---|
@@ -213,7 +296,7 @@ forcing an application release for every data regeneration.
 licence. They are different artifacts with different terms and are not to be conflated in one
 LICENSE reference.
 
-## 7. Open
+## 8. Open
 
 - **Does `snr_std` survive?** It is 345.5 MB — the third-largest column in the file — and earns
   its place only if a consumer renders dispersion or error bars. If nothing does, it is the
@@ -232,7 +315,7 @@ LICENSE reference.
   (`grid_lookup`, solar indices, DSCOVR) and one is a rule input (`balloon_callsigns`). Neither
   category exists in §0's model, which describes fact data only.
 
-## 8. Generation and acceptance
+## 9. Generation and acceptance
 
 **Generated on the 9975 in ClickHouse.** That is where bronze and silver live, it is the only
 engine in the lab that writes well-encoded Parquet, and the work is a batch job rather than a
@@ -246,5 +329,8 @@ v2 is not published until:
 4. A `band + hour` query against the published Parquet reads **under 10% of the file**, measured
    rather than assumed.
 5. Published checksums verify from a clean download.
-6. `DATA-DICTIONARY.md` is updated in the same change — a published artifact with no dictionary
+6. **Every dataset's manifest carries its grain as one sentence**, and every published name
+   follows §6. A dataset whose grain cannot be stated is not ready to publish, whatever its row
+   count.
+7. `DATA-DICTIONARY.md` is updated in the same change — a published artifact with no dictionary
    entry is the exact failure this collection exists to avoid.
