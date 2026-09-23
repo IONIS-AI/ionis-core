@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.1.0
+Version:        4.1.1
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,10 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.1.1-1
+- Retire solar.v_daily_indices and 03-solar_silver.sql. It read the dropped
+  solar.bronze and failed UNKNOWN_TABLE; the globbed DDL would have recreated it on
+  every schema apply (Watson; IONIS-AI/ionis-apps#34).
 * Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.1.0-1
 - contest.bronze gets every QSO: line upstream served (Judge: ingest is packaging).
   Adds file_path, line_no, declared_year, raw_line, patches and parse_error;
