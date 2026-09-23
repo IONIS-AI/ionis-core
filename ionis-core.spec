@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.5
+Version:        4.0.6
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -66,6 +66,13 @@ for py in scripts/populate_*.py; do
     install -m 755 "$py" %{buildroot}%{_datadir}/%{name}/scripts/
 done
 
+# Install the audits. These were repo-only, which made them unrunnable on any host
+# that installs the package rather than checking out the repo -- and an audit that
+# gates a tag or a release has to exist where the gate runs, not where it was written.
+for sh in scripts/verify_*.sh; do
+    install -m 755 "$sh" %{buildroot}%{_datadir}/%{name}/scripts/
+done
+
 # Install static data files
 install -m 644 data/*.tsv %{buildroot}%{_datadir}/%{name}/data/
 
@@ -93,6 +100,14 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.6-1
+- Package the audits. verify_schema_complete.sh, verify_contest_ingest.sh and
+  verify_dictionary_complete.sh were installed by nothing -- the %install loops
+  matched only populate_*, so the scripts existed in a git checkout and nowhere
+  else. An audit that gates a tag has to be on the host where the gate runs.
+- contest.parse_rejects + ingest_log.skipped_rows (from 4.0.5) and the two new
+  audits are the controls for the contest rebuild.
+
 * Tue Sep 22 2026 Bob <bob@ipa.home.arpa> - 4.0.5-1
 - contest.parse_rejects: new table holding every QSO line the parser could not
   read -- file, line number, category, full parser error and the raw line. A skip
