@@ -24,8 +24,7 @@ ionis-env          /usr/bin/                        Environment variables setup
 DDL                               Creates
 -----------------------------------------
 01-wspr_schema_v2.sql             wspr: bronze, v_schema_contract, v_data_integrity; (function): fn_wspr_validate_schema_v2, fn_wspr_expected_struct_size
-02-solar_indices.sql              solar: bronze
-03-solar_silver.sql               solar: v_daily_indices
+02-solar_indices.sql              solar: (database only; solar.bronze retired 2026-09-22)
 04-data_mgmt.sql                  data_mgmt: config
 05-geo_functions.sql              geo: v_grid_validation_example
 06-lab_versions.sql               data_mgmt: lab_versions, v_lab_versions_latest

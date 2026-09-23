@@ -340,7 +340,7 @@ is the point:
 | `wspr.bronze_uniform` | `wspr.bronze` where `minute >= 10` | **essential — see §5** |
 | `wspr.v_schema_contract` | column/type contract for `wspr.bronze` | active guard |
 | `wspr.v_data_integrity` | integrity counters over `wspr.bronze` | active guard |
-| `solar.v_daily_indices` | daily rollup of `solar.bronze` | active. Created by `03-solar_silver.sql` — **the filename is a leftover from the retired silver concept; the view has nothing to do with it** |
+| ~~`solar.v_daily_indices`~~ | daily rollup of the retired `solar.bronze` | **retired 2026-09-23.** It read `solar.bronze FINAL` and failed `UNKNOWN_TABLE` from the day that table was dropped; nothing read it. `03-solar_silver.sql` deleted with it, or the next schema apply would have recreated it (Watson, IONIS-AI/ionis-apps#34) |
 | `data_mgmt.v_lab_versions_latest` | latest row per component from `lab_versions` | empty because its base table is |
 | `geo.v_grid_validation_example` | worked example for the Maidenhead UDFs | documentation, not data |
 
