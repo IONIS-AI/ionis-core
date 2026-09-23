@@ -116,8 +116,22 @@ Nothing derives these. They are what the upstream gave us, normalised only in fi
 | `pskr.bronze` | 7.10B | PSK Reporter MQTT live feed | `pskr-ingest` | `22-pskr_schema_v1.sql` |
 | `rbn.bronze` | 2.37B | Reverse Beacon Network daily ZIPs | `rbn-ingest` | `10-rbn_schema_v1.sql` |
 | `contest.bronze` | 234.28M | Cabrillo logs (CQ WW, CQ WPX, ARRL, …) | `contest-ingest` | `11-contest_schema_v1.sql` |
-| `solar.bronze` | 78.33K | NOAA SWPC daily indices (SFI, Kp, Ap, sunspot) | `solar-ingest` (daily), `solar-backfill` (history), `solar-history-load.sh` | `02-solar_indices.sql` |
-| `solar.dscovr` | 231.89K | NOAA SWPC RTSW (DSCOVR/ACE L1 solar wind, 1-minute) | `dscovr-ingest` | `33-solar_dscovr.sql` |
+| `solar.kp_bronze` | 276.78K | GFZ Potsdam definitive Kp/ap archive, 1932– | `solar-kp-download` + `solar-kp-ingest` | `42-solar_kp_bronze.sql` |
+| `solar.sfi_bronze` | 23.91K | DRAO Penticton 10.7cm flux archive, 2004– | `solar-sfi-download` + `solar-sfi-ingest` | `43-solar_sfi_bronze.sql` |
+| `solar.ssn_bronze` | 76.21K | SIDC Brussels sunspot number archive, 1818– | `solar-ssn-download` + `solar-ssn-ingest` | `44-solar_ssn_bronze.sql` |
+| `solar.xray_bronze` | 57 | NOAA SWPC GOES X-ray 7-day window | `solar-xray-download` + `solar-xray-ingest` | `45-solar_xray_bronze.sql` |
+| `solar.dscovr` | 230.35K | NOAA SWPC RTSW (DSCOVR L1 solar wind, 1-minute) | `dscovr-ingest` | `33-solar_dscovr.sql` |
+
+**`solar.bronze` no longer exists.** It was one table carrying every index, and its merge
+zero-filled SFI across all rows — a LEFT JOIN without `join_use_nulls`, so absent readings became
+`0` rather than NULL and were indistinguishable from a real measurement. Rebuilt 2026-09-22 as one
+table per source, each from that source's definitive archive rather than NOAA's rolling window. The
+old table is retained as `solar.bronze_pre_rebuild_20260922` (78.34K rows) until the rebuild is
+trusted, then dropped.
+
+`solar.xray_bronze` holds 57 rows because its ingester polls a 7-day nowcast endpoint. NCEI
+publishes GOES XRS 1-minute L2 daily going back years; pointing it there is tracked in the bronze
+plan (KI7MT/fleet-ops#309, phase 3) along with the same problem in `solar.dscovr`.
 
 **Coverage as measured 2026-09-22:**
 
@@ -127,8 +141,11 @@ Nothing derives these. They are what the upstream gave us, normalised only in fi
 | `pskr.bronze` | 1970-01-01 | 2026-09-22 | 74 rows at epoch zero — malformed upstream timestamps, not a gap |
 | `rbn.bronze` | 2009-02-21 | 2026-09-20 | |
 | `contest.bronze` | 1970-01-01 | **2088-11-30** | 86 rows outside any plausible window. Real span is 1996-11-25 … 2025-08-31 |
-| `solar.bronze` | 2000-01-01 | 2026-09-21 | |
-| `solar.dscovr` | | 2026-09-22 05:25 | live |
+| `solar.kp_bronze` | 1932-01-01 | 2026-09-21 | definitive GFZ archive; zero incomplete months in 94 years |
+| `solar.sfi_bronze` | 2004-10-28 | 2026-09-22 | Penticton publishes no earlier |
+| `solar.ssn_bronze` | 1818-01-01 | 2026-08-31 | `Date32` — `Date` would wrap everything before 1970 |
+| `solar.xray_bronze` | 2026-09-15 | 2026-09-22 | 7-day endpoint; the archive is not yet wired |
+| `solar.dscovr` | 2026-02-14 | 2026-09-22 | live feed; **2026-07 and 2026-08 are empty** — see §8 |
 
 Two of those windows are wrong on their face. A `max(timestamp)` of 2088 is a parser accepting
 a year it should reject, and any query that does `WHERE timestamp > X` without an upper bound
@@ -246,7 +263,10 @@ question than the one asked.
 | `rbn.ingest_log` | 6.41K | as above |
 | `pskr.ingest_log` | 5.36K | as above; written by `pskr-ingest` |
 | `contest.ingest_log` | 495.99K | as above; one row per Cabrillo log |
-| `contest.quarantine` | 0 | Rejected contest logs. Empty because the reload that populates it has not run. |
+| `contest.quarantine` | 537.15K | QSOs that PARSED but fell outside their directory's declared year. 535,467 of them are `cq-wpx-rtty` 2017 logs republished by the publisher under 2018 — every one verified to exist already in bronze under 2017, so they are duplicates being held, not data being withheld. The remainder is year-field corruption (2080, 2106, 1970). |
+| `contest.parse_rejects` | 721 | QSO lines the parser could NOT read — file, line number, category, full parser error, raw line. Written by `contest-ingest --reject-table`, capped at 100 samples per file; the uncapped count is `contest.ingest_log.skipped_rows`. Distinct from quarantine: that holds a well-formed QSO, this holds a line that never became one. `45-contest_parse_rejects.sql` |
+| `rbn.dxpedition_paths` | 3.89M | DXpedition RBN spot paths, derived from `rbn.bronze` by `populate_dxpedition_paths.sh` and `derive_dxpedition_windows.py`. `19-dxpedition_synthesis.sql` |
+| `validation.step_i_voacap` | 0 | VOACAP predictions for the Step I recall head-to-head, populated by `voacap_batch_runner.py` (ionis-training). **Never run** — see §8. `16-validation_step_i.sql` |
 | `training.runs` | 22 | One row per training run — hyperparameters, outcome |
 | `training.epochs` | 913 | Per-epoch loss/metric trace for those runs |
 | `validation.model_results` | 33.47M | Per-path model predictions vs actuals. **All v22, latest 2026-02-27.** Written on the M3 by `ionis-training`, which is not checked out on this host. |
