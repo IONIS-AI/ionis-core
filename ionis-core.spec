@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.0.7
+Version:        4.0.8
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,12 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.8-1
+- verify_contest_ingest.sh reads ingest_log without FINAL. It is a
+  ReplacingMergeTree, so a file_path can appear twice until a background merge
+  collapses it, and a duplicated row adds its skipped_rows twice -- shrinking the
+  residual and under-reporting loss. Wrong direction for a gate.
+
 * Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.0.7-1
 - Fix the 4.0.6 changelog: it wrote %%install unescaped at the start of a line, so
   rpm read it as a second %%install section and the spec stopped parsing --
