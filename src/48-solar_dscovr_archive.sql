@@ -20,6 +20,8 @@
 --   flags    the *_flag variables go into one Map by name. NOAA has added plasma flags
 --            twice (large_flow_angle_flag by 2019; two unexpected_peak_location flags by
 --            2022), so the set differs by year: an absent key means the file predates it.
+--            One flag breaks the naming: large_flow_angles (2016-12-14 .. 2017-04-12), the
+--            same 0/1 flag later renamed large_flow_angle_flag. It is kept under its own name.
 --            Any NEW non-flag variable makes the ingester fail loudly instead.
 --
 -- NOT MERGED WITH THE LIVE FEED. solar.dscovr is the real-time RTSW feed, which carries
