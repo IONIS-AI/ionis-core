@@ -113,7 +113,7 @@ removes, or name what reads it, should be retired rather than explained.
 | WSPR | `wspr.bronze` | — | `wspr.signatures_v*`, `wspr.gold_*` |
 | RBN | `rbn.bronze` | — | `rbn.signatures` |
 | PSKR | `pskr.bronze` | — | `pskr.signatures` |
-| solar | `solar.bronze`, `solar.dscovr` | — | `solar.iri_lookup` |
+| solar | `solar.{kp,sfi,ssn,xray}_bronze`, `solar.dscovr_{f1m,m1m}_bronze`, `solar.dscovr` (live) | `solar.silver` | `solar.iri_lookup` |
 
 Only contest has a silver layer today, because contest is the only source so far with a defect
 that needs one. **Open question, not yet answered:** whether the `*.signatures` tables are
@@ -134,7 +134,9 @@ Nothing derives these. They are what the upstream gave us, normalised only in fi
 | `solar.sfi_bronze` | 23.91K | DRAO Penticton 10.7cm flux archive, 2004– | `solar-sfi-download` + `solar-sfi-ingest` | `43-solar_sfi_bronze.sql` |
 | `solar.ssn_bronze` | 76.21K | SIDC Brussels sunspot number archive, 1818– | `solar-ssn-download` + `solar-ssn-ingest` | `44-solar_ssn_bronze.sql` |
 | `solar.xray_bronze` | 57 | NOAA SWPC GOES X-ray 7-day window | `solar-xray-download` + `solar-xray-ingest` | `45-solar_xray_bronze.sql` |
-| `solar.dscovr` | 230.35K | NOAA SWPC RTSW (DSCOVR L1 solar wind, 1-minute) | `dscovr-ingest` | `33-solar_dscovr.sql` |
+| `solar.dscovr` | 230.35K | NOAA SWPC RTSW live feed (~24 h window; carries DSCOVR, ACE and IMAP). Measurements Nullable since 2026-09-24 — earlier rows stored missing as 0 | `dscovr-ingest` | `33-solar_dscovr.sql` |
+| `solar.dscovr_f1m_bronze` | — | NOAA NCEI DSCOVR archive, Faraday cup plasma 1-min averages, 2016-07-26– (~3 months behind). Every record of every file; missing as NULL; flags as sent | `dscovr-archive-download` + `dscovr-archive-ingest` | `48-solar_dscovr_archive.sql` |
+| `solar.dscovr_m1m_bronze` | — | NOAA NCEI DSCOVR archive, magnetometer 1-min averages, 2016-07-26– | `dscovr-archive-download` + `dscovr-archive-ingest` | `48-solar_dscovr_archive.sql` |
 
 **`solar.bronze` no longer exists.** It was one table carrying every index, and its merge
 zero-filled SFI across all rows — a LEFT JOIN without `join_use_nulls`, so absent readings became
@@ -159,7 +161,7 @@ plan (KI7MT/fleet-ops#309, phase 3) along with the same problem in `solar.dscovr
 | `solar.sfi_bronze` | 2004-10-28 | 2026-09-22 | Penticton publishes no earlier |
 | `solar.ssn_bronze` | 1818-01-01 | 2026-08-31 | `Date32` — `Date` would wrap everything before 1970 |
 | `solar.xray_bronze` | 2026-09-15 | 2026-09-22 | 7-day endpoint; the archive is not yet wired |
-| `solar.dscovr` | 2026-02-14 | 2026-09-22 | live feed; **2026-07 and 2026-08 are empty** — see §8 |
+| `solar.dscovr` | 2026-02-14 | 2026-09-22 | live feed; **2026-07 and 2026-08 are empty** — the archive tables cover them once NCEI publishes (≈3 months behind) |
 
 Two of those windows are wrong on their face. A `max(timestamp)` of 2088 is a parser accepting
 a year it should reject, and any query that does `WHERE timestamp > X` without an upper bound
@@ -274,6 +276,7 @@ question than the one asked.
 | Table | Rows | Purpose |
 |---|---:|---|
 | `wspr.ingest_log` | 465 | Per-file ingest record — file, size, rows, elapsed, host |
+| `solar.ingest_log` | — | as above, for the solar archive ingesters (`dscovr-archive-ingest`); includes `skipped_rows`. `48-solar_dscovr_archive.sql` |
 | `rbn.ingest_log` | 6.41K | as above |
 | `pskr.ingest_log` | 5.36K | as above; written by `pskr-ingest` |
 | `contest.ingest_log` | 495.99K | as above; one row per Cabrillo log |

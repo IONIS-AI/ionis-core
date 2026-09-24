@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.1.1
+Version:        4.2.0
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,14 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Thu Sep 24 2026 Bob <bob@ipa.home.arpa> - 4.2.0-1
+- 48-solar_dscovr_archive.sql: solar.dscovr_f1m_bronze and solar.dscovr_m1m_bronze, the
+  NOAA NCEI DSCOVR archive (2016-07-26-), one row per record, missing as NULL, flags in a
+  Map; and solar.ingest_log, the watermark for solar archive ingesters (#35).
+- solar.dscovr (live): measurements Nullable(Float32), no DEFAULT 0. A missing reading was
+  stored as 0. Existing host: ALTER TABLE ... MODIFY COLUMN ... Nullable(Float32).
+- verify_dscovr_ingest.sh: archive records == bronze rows per product and year; the
+  archive side is read from each file's header with od, not with the ingester's code.
 * Wed Sep 23 2026 Bob <bob@ipa.home.arpa> - 4.1.1-1
 - Retire solar.v_daily_indices and 03-solar_silver.sql. It read the dropped
   solar.bronze and failed UNKNOWN_TABLE; the globbed DDL would have recreated it on
