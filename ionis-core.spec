@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.3.0
+Version:        4.3.1
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,13 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Fri Sep 25 2026 Bob <bob@ipa.home.arpa> - 4.3.1-1
+- 43-solar_sfi_bronze.sql: plain MergeTree, one row per file line, with julian, line_no,
+  raw_line, parse_error; Nullable values. Replaces a ReplacingMergeTree that collapsed 49
+  real observations sharing a rounded fluxtime (IONIS-AI/ionis-apps#46). Existing host:
+  DROP TABLE solar.sfi_bronze, apply, run solar-sfi-refresh.
+- verify_sfi_ingest.sh: file data lines == table rows AND identical line-number sets
+  (file side read with awk); coverage lists days with no observation.
 * Fri Sep 25 2026 Bob <bob@ipa.home.arpa> - 4.3.0-1
 - 49-solar_goes_xrs_bronze.sql: solar.goes_xrs_1m_bronze, NOAA NCEI GOES X-ray 1-minute
   science archive, GOES-16/17/18/19 from 2017. Every record, every variable as the file

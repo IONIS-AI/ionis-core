@@ -131,7 +131,7 @@ Nothing derives these. They are what the upstream gave us, normalised only in fi
 | `rbn.bronze` | 2.37B | Reverse Beacon Network daily ZIPs | `rbn-ingest` | `10-rbn_schema_v1.sql` |
 | `contest.bronze` | 234.28M | Cabrillo logs (CQ WW, CQ WPX, ARRL, …) | `contest-ingest` | `11-contest_schema_v1.sql` |
 | `solar.kp_bronze` | 276.78K | GFZ Potsdam definitive Kp/ap archive, 1932– | `solar-kp-download` + `solar-kp-ingest` | `42-solar_kp_bronze.sql` |
-| `solar.sfi_bronze` | 23.91K | DRAO Penticton 10.7cm flux archive, 2004– | `solar-sfi-download` + `solar-sfi-ingest` | `43-solar_sfi_bronze.sql` |
+| `solar.sfi_bronze` | 23.97K | DRAO Penticton 10.7cm flux archive, 2004–. **One row per line of the file** (every column incl. fluxjulian, line number, raw line); rebuilt as an exact copy each run via staging + EXCHANGE TABLES. Until #46 a ReplacingMergeTree collapsed 49 real observations sharing a rounded fluxtime | `solar-sfi-download` + `solar-sfi-ingest` | `43-solar_sfi_bronze.sql` |
 | `solar.ssn_bronze` | 76.21K | SIDC Brussels sunspot number archive, 1818– | `solar-ssn-download` + `solar-ssn-ingest` | `44-solar_ssn_bronze.sql` |
 | `solar.goes_xrs_1m_bronze` | — | NOAA NCEI GOES X-ray 1-minute science archive (xrsf-l2-avg1m_science), GOES-16/17/18/19 from 2017-02-07, every record, all satellites tagged. Replaces `solar.xray_bronze` (a 7-day window). GOES-17 has two NOAA publication gaps, reported by the audit | `goes-xrs-download` + `goes-xrs-ingest` | `49-solar_goes_xrs_bronze.sql` |
 | `solar.dscovr` | 230.35K | NOAA SWPC RTSW live feed (~24 h window; carries DSCOVR, ACE and IMAP). Measurements Nullable since 2026-09-24 — earlier rows stored missing as 0 | `dscovr-ingest` | `33-solar_dscovr.sql` |
