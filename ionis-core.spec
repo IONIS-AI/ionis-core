@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.2.0
+Version:        4.3.0
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,14 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Fri Sep 25 2026 Bob <bob@ipa.home.arpa> - 4.3.0-1
+- 49-solar_goes_xrs_bronze.sql: solar.goes_xrs_1m_bronze, NOAA NCEI GOES X-ray 1-minute
+  science archive, GOES-16/17/18/19 from 2017. Every record, every variable as the file
+  names it, _FillValue as NULL, all satellites tagged (IONIS-AI/ionis-apps#36).
+- Retire 45-solar_xray_bronze.sql (a 7-day window). The table is dropped on install.
+  populate_solar_silver.sh still reads it and will fail until silver is repointed.
+- verify_goes_xrs_ingest.sh: records (read with ncdump, not the ingester) == bronze rows
+  per satellite and year; plus a coverage section listing every day with no file.
 * Thu Sep 24 2026 Bob <bob@ipa.home.arpa> - 4.2.0-1
 - 48-solar_dscovr_archive.sql: solar.dscovr_f1m_bronze and solar.dscovr_m1m_bronze, the
   NOAA NCEI DSCOVR archive (2016-07-26-), one row per record, missing as NULL, flags in a
