@@ -1,7 +1,7 @@
 -- =============================================================================
 -- File.........: 43-solar_sfi_bronze.sql
 -- Description..: 10.7cm solar radio flux, from Penticton (NRC Canada)
--- Engine.......: ReplacingMergeTree
+-- Engine.......: MergeTree (every line a row; loaded via staging + EXCHANGE TABLES)
 -- Population...: solar-sfi-download + solar-sfi-ingest
 --
 -- ONE TABLE PER SOURCE -- see 42-solar_kp_bronze.sql for why solar.bronze's
@@ -29,23 +29,35 @@
 
 CREATE DATABASE IF NOT EXISTS solar;
 
+-- EVERY LINE IS A ROW (IONIS-AI/ionis-apps#46, 2026-09-25). This was a
+-- ReplacingMergeTree keyed on observed_at. Penticton's fluxtime is ROUNDED, and 49 pairs
+-- of lines share one while being separate observations -- different fluxjulian,
+-- different fluxes, adjacent in the file. The merge kept one of each, picked by merge
+-- order, and fluxjulian, the column that separates them, was not stored. Now a plain
+-- MergeTree: one row per data line, every column, the line number and raw text;
+-- an unreadable line is kept with parse_error set and NULL values.
+--
+-- Penticton republishes its whole history in one file, so solar-sfi-ingest loads each
+-- copy into solar.sfi_bronze_staging and swaps it in with EXCHANGE TABLES only once the
+-- staged row count equals the file's data lines: the table is always an exact copy of
+-- one version of the file, and a failed run leaves the previous one in place.
+--
+-- MIGRATION on an existing host (schema changed): DROP TABLE solar.sfi_bronze, apply
+-- this file, then run solar-sfi-refresh.service.
 CREATE TABLE IF NOT EXISTS solar.sfi_bronze
 (
-    observed_at   DateTime  COMMENT 'Observation time UTC (Penticton measures at 17, 20, 23)',
-    observed_flux Float32   COMMENT 'Measured 10.7cm flux, sfu',
-    adjusted_flux Float32   COMMENT 'Normalised to 1 AU, sfu',
-    ursi_flux     Float32   COMMENT 'URSI series D adjusted value, sfu',
-    carrington    Float32   COMMENT 'Carrington rotation number',
+    observed_at   Nullable(DateTime) COMMENT 'fluxdate + fluxtime, UTC as the file gives it (fluxtime is rounded; julian is exact)',
+    julian        Nullable(Float64)  COMMENT 'fluxjulian: Julian date of the observation -- distinguishes observations sharing a rounded fluxtime',
+    carrington    Nullable(Float64)  COMMENT 'fluxcarrington: Carrington rotation',
+    observed_flux Nullable(Float32)  COMMENT 'fluxobsflux: measured 10.7 cm flux, sfu',
+    adjusted_flux Nullable(Float32)  COMMENT 'fluxadjflux: normalised to 1 AU, sfu',
+    ursi_flux     Nullable(Float32)  COMMENT 'fluxursi: URSI series D adjusted value, sfu',
+    line_no       UInt32             COMMENT 'Line number in the source file, 1-based, headers counted',
+    raw_line      String             COMMENT 'The line exactly as the file holds it',
+    parse_error   String             COMMENT 'Why the line could not be read; empty when it was',
     source_file   LowCardinality(String),
     ingested_at   DateTime DEFAULT now()
 )
-    -- PARTITION BY DECADE, not year. These are small tables -- Kp is 277k rows and
-    -- 2.8 MiB, SSN 76k -- and a partition per year produces ~100-200 tiny parts for
-    -- no benefit. ClickHouse's own guidance: partitioning is for data manipulation,
-    -- not query speed; the ORDER BY key already makes range queries fast. A 209-year
-    -- series also exceeds max_partitions_per_insert_block at yearly grain, which is
-    -- how this was found.
-ENGINE = ReplacingMergeTree(ingested_at)
-PARTITION BY (toYear(observed_at) - toYear(observed_at) % 10)
-ORDER BY observed_at
+ENGINE = MergeTree
+ORDER BY (source_file, line_no)
 SETTINGS index_granularity = 8192;
