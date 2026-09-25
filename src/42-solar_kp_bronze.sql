@@ -1,7 +1,7 @@
 -- =============================================================================
 -- File.........: 42-solar_kp_bronze.sql
 -- Description..: Planetary Kp / ap index, from GFZ Potsdam — one source, one table
--- Engine.......: ReplacingMergeTree (re-fetching the archive must be idempotent)
+-- Engine.......: MergeTree (every line a row; loaded via staging + EXCHANGE TABLES, so re-fetching is idempotent)
 -- Population...: solar-kp-download + solar-kp-ingest
 --
 -- ONE TABLE PER SOURCE. solar.bronze merged three NOAA streams into one row per
@@ -36,32 +36,38 @@
 --
 -- Kp is the real value (0.000, 0.333, 0.667, 1.000 ...), NOT the 0-9 integer.
 -- ap is the linear equivalent. D is the definitive flag: 1 = definitive,
--- 0 = provisional and may be revised, which is precisely why this is a
--- ReplacingMergeTree keyed on the observation time.
+-- 0 = provisional and may be revised. A revision arrives as the next copy of the file,
+-- which replaces the table whole (staging + EXCHANGE TABLES) -- no merge decides it.
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS solar;
 
+-- EVERY LINE IS A ROW, EVERY COLUMN KEPT (2026-09-25, the #46 pattern). Was a
+-- ReplacingMergeTree keyed on the date that stored only some of the source columns.
+-- Now a plain MergeTree, one row per data line with line number and raw text; source
+-- sentinels (-1) are NULL; an unreadable line is kept with parse_error set. The source
+-- republishes its whole series each time, so the ingester loads a staging table,
+-- checks its count against the file, and swaps it in with EXCHANGE TABLES.
+-- MIGRATION on an existing host (schema changed): DROP TABLE, apply this file, run the
+-- refresh service.
 CREATE TABLE IF NOT EXISTS solar.kp_bronze
 (
     -- DateTime64, NOT DateTime. ClickHouse DateTime spans 1970-2106, and this
     -- archive starts in 1932: the first load silently wrapped 1932-1969 into
-    -- 2068-2106, producing plausible-looking rows for years that have not happened.
-    -- DateTime64(0) covers 1900-2299 at the same one-second resolution.
-    observed_at  DateTime64(0) COMMENT 'Start of the 3-hour interval, UTC',
-    kp           Float32   COMMENT 'Planetary K index, real-valued (0.000, 0.333, 0.667, ...)',
-    ap           UInt16    COMMENT 'Linear equivalent of Kp',
-    definitive   UInt8     COMMENT '1 = definitive, 0 = provisional and subject to revision',
-    source_file  LowCardinality(String) COMMENT 'File the row was parsed from',
-    ingested_at  DateTime DEFAULT now() COMMENT 'When this row was loaded'
+    -- 2068-2106. DateTime64(0) covers 1900-2299 at one-second resolution.
+    observed_at  Nullable(DateTime64(0, 'UTC')) COMMENT 'YYY MM DD hh.h: start of the 3-hour interval, UTC',
+    hour_mid     Nullable(Float32)  COMMENT 'hh._m: hour of the interval midpoint',
+    days         Nullable(Float64)  COMMENT 'days: days since 1932-01-01 00:00 UT, interval start',
+    days_mid     Nullable(Float64)  COMMENT 'days_m: same, interval midpoint',
+    kp           Nullable(Float32)  COMMENT 'Kp, real-valued (0.000, 0.333, ...); NULL where GFZ publishes -1',
+    ap           Nullable(UInt16)   COMMENT 'ap, linear equivalent of Kp; NULL where GFZ publishes -1',
+    definitive   Nullable(UInt8)    COMMENT 'D: 1 definitive, 0 provisional (revised in a later copy of the file)',
+    line_no      UInt32             COMMENT 'Line number in the source file, 1-based, comments counted',
+    raw_line     String             COMMENT 'The line exactly as the file holds it',
+    parse_error  String             COMMENT 'Why the line could not be read; empty when it was',
+    source_file  LowCardinality(String),
+    ingested_at  DateTime DEFAULT now()
 )
-    -- PARTITION BY DECADE, not year. These are small tables -- Kp is 277k rows and
-    -- 2.8 MiB, SSN 76k -- and a partition per year produces ~100-200 tiny parts for
-    -- no benefit. ClickHouse's own guidance: partitioning is for data manipulation,
-    -- not query speed; the ORDER BY key already makes range queries fast. A 209-year
-    -- series also exceeds max_partitions_per_insert_block at yearly grain, which is
-    -- how this was found.
-ENGINE = ReplacingMergeTree(ingested_at)
-PARTITION BY (toYear(observed_at) - toYear(observed_at) % 10)
-ORDER BY observed_at
+ENGINE = MergeTree
+ORDER BY (source_file, line_no)
 SETTINGS index_granularity = 8192;

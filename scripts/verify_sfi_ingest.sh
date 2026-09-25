@@ -26,11 +26,15 @@ ch() { clickhouse-client --host "$CH_HOST" -q "$1" 2>/dev/null; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 # Data lines = every non-blank line that is not one of the two header lines.
 awk '{t=$0; gsub(/^[ \t]+|[ \t]+$/,"",t)} t!="" && t !~ /^fluxdate/ && t !~ /^---/ {print NR}' "$FILE" > "$tmp/file.lines"
-ch "SELECT line_no FROM $TABLE ORDER BY line_no FORMAT TSV" > "$tmp/table.lines"
+ch "SELECT line_no FROM $TABLE FORMAT TSV" > "$tmp/table.lines"
+# comm needs both sides in the SAME text collation; numeric order is not that (10 < 9
+# as text). Sort both with sort(1), or comm warns and its missing/extra counts are wrong.
+LC_ALL=C sort -o "$tmp/file.lines" "$tmp/file.lines"
+LC_ALL=C sort -o "$tmp/table.lines" "$tmp/table.lines"
 
 f=$(wc -l < "$tmp/file.lines"); t=$(wc -l < "$tmp/table.lines")
-only_file=$(comm -23 "$tmp/file.lines" "$tmp/table.lines" | wc -l)
-only_table=$(comm -13 "$tmp/file.lines" "$tmp/table.lines" | wc -l)
+only_file=$(LC_ALL=C comm -23 "$tmp/file.lines" "$tmp/table.lines" | wc -l)
+only_table=$(LC_ALL=C comm -13 "$tmp/file.lines" "$tmp/table.lines" | wc -l)
 rc=0
 echo "== 1. LINES: $FILE vs $TABLE"
 printf '  file data lines %d · table rows %d · lines missing from table %d · rows with no such line %d\n' "$f" "$t" "$only_file" "$only_table"

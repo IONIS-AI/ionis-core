@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.3.1
+Version:        4.4.0
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,15 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Fri Sep 25 2026 Bob <bob@ipa.home.arpa> - 4.4.0-1
+- 42-solar_kp_bronze.sql, 44-solar_ssn_bronze.sql: plain MergeTree, one row per file
+  line, every source column (Kp: hour_mid, days, days_mid; SSN: decimal_year), line_no,
+  raw_line, parse_error. Existing host: DROP TABLE, apply, run the refresh service.
+- verify_kp_ingest.sh, verify_ssn_ingest.sh: line-number SETS compared both ways (file
+  side by awk) plus coverage (Kp: days without 8 intervals; SSN: missing/doubled days).
+- verify_sfi_ingest.sh: FIX -- comm was fed numerically sorted line numbers, so its
+  missing/extra counts could be wrong (it warned "not in sorted order"). Both sides are
+  now sorted in C collation. Found by the equal-count swap test.
 * Fri Sep 25 2026 Bob <bob@ipa.home.arpa> - 4.3.1-1
 - 43-solar_sfi_bronze.sql: plain MergeTree, one row per file line, with julian, line_no,
   raw_line, parse_error; Nullable values. Replaces a ReplacingMergeTree that collapsed 49
