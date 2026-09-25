@@ -133,7 +133,7 @@ Nothing derives these. They are what the upstream gave us, normalised only in fi
 | `solar.kp_bronze` | 276.78K | GFZ Potsdam definitive Kp/ap archive, 1932– | `solar-kp-download` + `solar-kp-ingest` | `42-solar_kp_bronze.sql` |
 | `solar.sfi_bronze` | 23.91K | DRAO Penticton 10.7cm flux archive, 2004– | `solar-sfi-download` + `solar-sfi-ingest` | `43-solar_sfi_bronze.sql` |
 | `solar.ssn_bronze` | 76.21K | SIDC Brussels sunspot number archive, 1818– | `solar-ssn-download` + `solar-ssn-ingest` | `44-solar_ssn_bronze.sql` |
-| `solar.xray_bronze` | 57 | NOAA SWPC GOES X-ray 7-day window | `solar-xray-download` + `solar-xray-ingest` | `45-solar_xray_bronze.sql` |
+| `solar.goes_xrs_1m_bronze` | — | NOAA NCEI GOES X-ray 1-minute science archive (xrsf-l2-avg1m_science), GOES-16/17/18/19 from 2017-02-07, every record, all satellites tagged. Replaces `solar.xray_bronze` (a 7-day window). GOES-17 has two NOAA publication gaps, reported by the audit | `goes-xrs-download` + `goes-xrs-ingest` | `49-solar_goes_xrs_bronze.sql` |
 | `solar.dscovr` | 230.35K | NOAA SWPC RTSW live feed (~24 h window; carries DSCOVR, ACE and IMAP). Measurements Nullable since 2026-09-24 — earlier rows stored missing as 0 | `dscovr-ingest` | `33-solar_dscovr.sql` |
 | `solar.dscovr_f1m_bronze` | — | NOAA NCEI DSCOVR archive, Faraday cup plasma 1-min averages, 2016-07-26– (~3 months behind). Every record of every file; missing as NULL; flags as sent | `dscovr-archive-download` + `dscovr-archive-ingest` | `48-solar_dscovr_archive.sql` |
 | `solar.dscovr_m1m_bronze` | — | NOAA NCEI DSCOVR archive, magnetometer 1-min averages, 2016-07-26– | `dscovr-archive-download` + `dscovr-archive-ingest` | `48-solar_dscovr_archive.sql` |
@@ -145,9 +145,11 @@ table per source, each from that source's definitive archive rather than NOAA's 
 old table is retained as `solar.bronze_pre_rebuild_20260922` (78.34K rows) until the rebuild is
 trusted, then dropped.
 
-`solar.xray_bronze` holds 57 rows because its ingester polls a 7-day nowcast endpoint. NCEI
-publishes GOES XRS 1-minute L2 daily going back years; pointing it there is tracked in the bronze
-plan (KI7MT/fleet-ops#309, phase 3) along with the same problem in `solar.dscovr`.
+`solar.xray_bronze` (retired 2026-09-25) held a week at most because its ingester polled a 7-day
+nowcast endpoint. X-ray now comes from NCEI's 1-minute archive into `solar.goes_xrs_1m_bronze`,
+and DSCOVR from NCEI's archive into `solar.dscovr_{f1m,m1m}_bronze` (IONIS-AI/ionis-apps#35, #36).
+**`populate_solar_silver.sh` still reads `solar.xray_bronze`** and will fail loudly on its next
+manual run until silver is repointed -- silver is outside the bronze plan, so this is recorded, not fixed.
 
 **Coverage as measured 2026-09-22:**
 
@@ -160,7 +162,7 @@ plan (KI7MT/fleet-ops#309, phase 3) along with the same problem in `solar.dscovr
 | `solar.kp_bronze` | 1932-01-01 | 2026-09-21 | definitive GFZ archive; zero incomplete months in 94 years |
 | `solar.sfi_bronze` | 2004-10-28 | 2026-09-22 | Penticton publishes no earlier |
 | `solar.ssn_bronze` | 1818-01-01 | 2026-08-31 | `Date32` — `Date` would wrap everything before 1970 |
-| `solar.xray_bronze` | 2026-09-15 | 2026-09-22 | 7-day endpoint; the archive is not yet wired |
+| `solar.goes_xrs_1m_bronze` | 2017-02-07 | (NCEI, one day behind) | GOES-17 no file 2018-08-06..09-13 and 2019-08-28..12-17 (NOAA never published) |
 | `solar.dscovr` | 2026-02-14 | 2026-09-22 | live feed; **2026-07 and 2026-08 are empty** — the archive tables cover them once NCEI publishes (≈3 months behind) |
 
 Two of those windows are wrong on their face. A `max(timestamp)` of 2088 is a parser accepting
