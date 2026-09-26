@@ -128,6 +128,7 @@ Nothing derives these. They are what the upstream gave us, normalised only in fi
 |---|---:|---|---|---|
 | `wspr.bronze` | 12.68B | wsprnet.org monthly CSV archives + `wspr.live` stream | `wspr-turbo`, `wspr-shredder`, `wspr-ingest`, `wspr-parquet-*`, `wspr-backfill` (all `-ch-table bronze`) | `01-wspr_schema_v2.sql` |
 | `pskr.bronze` | 7.10B | PSK Reporter MQTT live feed | `pskr-ingest` | `22-pskr_schema_v1.sql` |
+| `pskr.capture_bronze` | — | PSK Reporter MQTT feed **as pskr-capture recorded it** (2026-09-26–): every line of every capture file, message or event; all 13 payload fields, unknown fields in `extra`; `band_adif` derived. Capture == bronze is audited (`verify_pskr_capture_ingest.sh`); completeness against the live feed is not provable (no upstream archive) — sq gaps, events and crashed hours are reported as measured loss | `pskr-capture` + `pskr-capture-ingest` | `50-pskr_capture_bronze.sql` |
 | `rbn.bronze` | 2.37B | Reverse Beacon Network daily ZIPs | `rbn-ingest` | `10-rbn_schema_v1.sql` |
 | `contest.bronze` | 234.28M | Cabrillo logs (CQ WW, CQ WPX, ARRL, …) | `contest-ingest` | `11-contest_schema_v1.sql` |
 | `solar.kp_bronze` | 276.81K | GFZ Potsdam definitive Kp/ap archive, 1932–. **One row per data line, all 10 columns** (incl. hh._m, days, days_m), line number and raw line; -1 → NULL (was: line skipped). Exact copy per run via staging + EXCHANGE TABLES. Audit: `verify_kp_ingest.sh` | `solar-kp-download` + `solar-kp-ingest` | `42-solar_kp_bronze.sql` |
@@ -281,6 +282,7 @@ question than the one asked.
 | `solar.ingest_log` | — | as above, for the solar archive ingesters (`dscovr-archive-ingest`); includes `skipped_rows`. `48-solar_dscovr_archive.sql` |
 | `rbn.ingest_log` | 6.41K | as above |
 | `pskr.ingest_log` | 5.36K | as above; written by `pskr-ingest` |
+| `pskr.capture_ingest_log` | — | watermark for `pskr-capture-ingest`, one row per capture file; includes `skipped_rows` (always 0). `50-pskr_capture_bronze.sql` |
 | `contest.ingest_log` | 495.99K | as above; one row per Cabrillo log |
 | `contest.parse_rejects` | view | **A view over `contest.bronze`** (`parse_error != ''`): the QSO lines the parser could not read, with file, line number, reason category, full error and raw line. Until 2026-09-23 this was a capped side table and the lines were not in bronze; now bronze holds every line and this is a lens on it. `47-contest_parse_rejects.sql` |
 | ~~`contest.quarantine`~~ | retired 2026-09-23 | Held QSOs dated outside their directory's year. Those rows are now in `contest.bronze` as sent, tagged `off-declared-year` — including the 535,467 `cq-wpx-rtty` 2017 logs the publisher serves under 2018, which silver must deduplicate. DDL `37-contest_quarantine.sql` deleted. |

@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.4.0
+Version:        4.5.0
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,13 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.0-1
+- 50-pskr_capture_bronze.sql: pskr.capture_bronze (every line of pskr-capture's files)
+  and pskr.capture_ingest_log (IONIS-AI/ionis-apps#37).
+- verify_pskr_capture_ingest.sh: BALANCE -- per file, zcat|awk line count vs count(),
+  sum(line_no), XOR(line_no) (exact; catches an equal-count swap); COVERAGE -- gaps
+  between files, crashed hours, events, sq gaps; states that completeness against the
+  live feed is not provable.
 * Fri Sep 25 2026 Bob <bob@ipa.home.arpa> - 4.4.0-1
 - 42-solar_kp_bronze.sql, 44-solar_ssn_bronze.sql: plain MergeTree, one row per file
   line, every source column (Kp: hour_mid, days, days_mid; SSN: decimal_year), line_no,
