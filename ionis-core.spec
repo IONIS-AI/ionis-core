@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.5.0
+Version:        4.5.1
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,11 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.1-1
+- verify_pskr_capture_ingest.sh: sq gaps are reported as an UPPER BOUND on capture loss,
+  not as messages "that never reached us". A second independent client over the same
+  90 s (2026-09-26) missed the same 606 of 43,718 numbers, and the capture missed 0
+  that the other client received: PSK Reporter numbers more than it publishes on MQTT.
 * Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.0-1
 - 50-pskr_capture_bronze.sql: pskr.capture_bronze (every line of pskr-capture's files)
   and pskr.capture_ingest_log (IONIS-AI/ionis-apps#37).
