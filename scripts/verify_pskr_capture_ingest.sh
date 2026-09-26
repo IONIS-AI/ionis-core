@@ -13,7 +13,11 @@
 #      difference.
 #   2. COVERAGE -- measured, reported, not failed: hours with no capture file, crashed
 #      hours (.partial), connection events, messages dropped by a full buffer, and the
-#      sequence-number (sq) gaps -- messages PSK Reporter numbered that never reached us.
+#      sequence-number (sq) gaps. An sq gap is NOT a measure of our loss: PSK Reporter
+#      assigns sq to more than it publishes on MQTT. Measured 2026-09-26 with a second,
+#      independent client over the same 90 s: 606 of 43,718 numbers (1.39%) reached
+#      neither client, and the capture missed 0 that the other client received. So sq
+#      gaps are an UPPER BOUND on capture loss, reported as such.
 #   3. COMPLETENESS against the live feed -- NOT provable after the fact, and not claimed.
 #
 # Files still being written (.partial touched within STALE minutes) are skipped, the
@@ -65,8 +69,9 @@ sed -n 's#.*\([0-9]\{4\}\)/\([0-9]\{2\}\)/\([0-9]\{2\}\)/capture-\([0-9]\{2\}\)\
   while read -r d t; do date -ud "$d $t" +%s; done | awk 'NR>1 && $1-p > 3900 {g++; printf "    %s -> %s (%d min)\n", strftime("%F %T",p,1), strftime("%F %T",$1,1), ($1-p)/60} {p=$1} END {printf "    gaps: %d\n", g+0}'
 echo "  events in the capture:"
 ch "SELECT event, count(), min(rx), max(rx), sum(ifNull(event_count, 0)) FROM $TABLE WHERE event != '' GROUP BY event ORDER BY event FORMAT TSV" | awk -F'\t' '{printf "    %-18s %6d   first %s   last %s   dropped-count %s\n", $1, $2, $3, $4, $5}'
-echo "  sequence numbers (sq): messages PSK Reporter numbered that never reached us:"
-ch "SELECT toDate(rx) d, count() got, uniqExact(sq) distinct_sq, max(sq) - min(sq) + 1 span, span - distinct_sq missing, round(100 * distinct_sq / span, 2) pct FROM $TABLE WHERE sq IS NOT NULL GROUP BY d ORDER BY d FORMAT TSV" | awk -F'\t' '{printf "    %s  received %d  sq span %d  missing %d  (%.2f%% of the span received)\n", $1, $2, $4, $5, $6}'
+echo "  sequence numbers (sq) not received -- an UPPER BOUND on capture loss, not a measure of it:"
+echo "    (PSK Reporter numbers more than it publishes; a parallel client on 2026-09-26 missed the same numbers)"
+ch "SELECT toDate(rx) d, count() got, uniqExact(sq) distinct_sq, max(sq) - min(sq) + 1 span, span - distinct_sq missing, round(100 * distinct_sq / span, 2) pct FROM $TABLE WHERE sq IS NOT NULL GROUP BY d ORDER BY d FORMAT TSV" | awk -F'\t' '{printf "    %s  received %d  sq span %d  not received %d  (%.2f%% of the span received)\n", $1, $2, $4, $5, $6}'
 echo "  unreadable lines kept (parse_error): $(ch "SELECT countIf(parse_error != '') FROM $TABLE")"
 
 echo
