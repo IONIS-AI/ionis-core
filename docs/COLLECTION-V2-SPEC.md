@@ -332,22 +332,26 @@ but the app may."*
 | image | holds | changes |
 |---|---|---|
 | `ionis-ai-atlas` | the Atlas application: React front end, FastAPI API | often |
-| `ionis-ai-atlas-db` | the engine: PostgreSQL 17 + pgvector, its tuning, and the **reference data** (the `adif` schema and the `ionis` dimensions), loaded and audited at build time | rarely: an ADIF release, a PostgreSQL update, a dimension change |
+| `ionis-ai-atlas-db` | the engine: PostgreSQL 17 + pgvector, its tuning, and the **reference data** (the `adif` schema and the `ionis` dimensions), audited at build time and applied at start | rarely: an ADIF release, a PostgreSQL update, a dimension change |
 | `ionis-ai-atlas-data-<dataset>` | **one dataset**: its `pg_dump` (custom format) and its `collection.manifest` row | when that dataset is added or regenerated |
 
 **Rules:**
 
-- **Reference data is baked into the engine image.** It is small, fixed per ADIF version, and the
-  image build fails if its audit does, so an engine image that exists is one whose reference data
-  was verified.
+- **The engine image carries the reference data and applies it by version at every start.** The
+  image build loads and audits it, and fails if the audit does, so an engine image that exists is
+  one whose reference data was verified. At start, the engine adds any ADIF version the database
+  does not yet hold; ADIF's tables are keyed on `adif_version`, so a new version is added beside
+  the old one, never replaced. It is not delivered by baking it into the data directory: Docker
+  seeds a named volume from an image only once, so a later engine image's reference data would
+  never reach an existing install.
 - **Each data image restores itself once.** On start it restores its dump into the engine's
   database, **only if that dataset at that version is not already there**, and records the result
   in `collection.manifest`. Adding a dataset downloads that dataset and nothing else; an application
   update downloads no data at all.
-- **No volume ever hides newer data.** Datasets live in the database volume and are replaced by
-  version, never by the engine image's own data directory. A named volume mounted over data baked
-  into an image keeps serving the old data after an upgrade, so collection data is never baked
-  into the engine.
+- **No volume ever hides newer data.** The database volume is a cache that every start reconciles:
+  reference data and datasets are applied by version, never inherited from an image's data
+  directory. Everything in the volume can be rebuilt from the images, so a PostgreSQL major
+  version change rebuilds it rather than upgrading it in place.
 - **A `pg_dump` does not depend on the CPU architecture**, so each data image is built and pushed
   once. The application and engine images are multi-arch: `linux/amd64` and `linux/arm64`.
 - **Every image is built on Red Hat UBI 9**, as the Atlas specification requires: the RHEL
