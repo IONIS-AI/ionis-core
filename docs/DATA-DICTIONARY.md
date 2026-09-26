@@ -127,7 +127,7 @@ Nothing derives these. They are what the upstream gave us, normalised only in fi
 | Table | Rows | Source | Written by | DDL |
 |---|---:|---|---|---|
 | `wspr.bronze` | 12.68B | wsprnet.org monthly CSV archives + `wspr.live` stream | `wspr-turbo`, `wspr-shredder`, `wspr-ingest`, `wspr-parquet-*`, `wspr-backfill` (all `-ch-table bronze`) | `01-wspr_schema_v2.sql` |
-| `pskr.bronze` | 7.10B | PSK Reporter MQTT live feed | `pskr-ingest` | `22-pskr_schema_v1.sql` |
+| `pskr.bronze` | 7,246,715,981 | **FROZEN 2026-09-26 15:24:47 UTC.** PSK Reporter MQTT feed through the retired `pskr-collector`: HF only, 8 of 13 fields, and its grid regex erased valid grids, so 6.75 B rows have no usable grid pair. Last spots file loaded and reconciled line for line before the freeze. `band` is a lab code, not an ADIF value. Live data: `pskr.capture_bronze` | `pskr-ingest` (retired, ionis-apps 4.9.0) | `22-pskr_schema_v1.sql` |
 | `pskr.capture_bronze` | — | PSK Reporter MQTT feed **as pskr-capture recorded it** (2026-09-26–): every line of every capture file, message or event; all 13 payload fields, unknown fields in `extra`; `band_adif` derived. Capture == bronze is audited (`verify_pskr_capture_ingest.sh`); completeness against the live feed is not provable (no upstream archive) — sq gaps, events and crashed hours are reported as measured loss | `pskr-capture` + `pskr-capture-ingest` | `50-pskr_capture_bronze.sql` |
 | `rbn.bronze` | 2.37B | Reverse Beacon Network daily ZIPs | `rbn-ingest` | `10-rbn_schema_v1.sql` |
 | `contest.bronze` | 234.28M | Cabrillo logs (CQ WW, CQ WPX, ARRL, …) | `contest-ingest` | `11-contest_schema_v1.sql` |
@@ -157,7 +157,7 @@ manual run until silver is repointed -- silver is outside the bronze plan, so th
 | Table | Earliest | Latest | Note |
 |---|---|---|---|
 | `wspr.bronze` | 2008-03-11 | 2026-09-21 | see §5 — the first 10 minutes of each hour are incomplete for 2023-10 … 2025-04 |
-| `pskr.bronze` | 1970-01-01 | 2026-09-22 | 74 rows at epoch zero — malformed upstream timestamps, not a gap |
+| `pskr.bronze` | 1970-01-01 | 2026-09-26 15:24:47 (frozen) | 74 rows at epoch zero — malformed upstream timestamps, not a gap. No rows after the freeze; live data is `pskr.capture_bronze` |
 | `rbn.bronze` | 2009-02-21 | 2026-09-20 | |
 | `contest.bronze` | 1970-01-01 | **2088-11-30** | As sent: logger clocks set to the wrong year are stored as dated and tagged `off-declared-year`; years DateTime cannot hold (0201, 3000) are NULL with `timestamp-unrepresentable`. Real span is 1996-11-25 … 2025-08-31 |
 | `solar.kp_bronze` | 1932-01-01 | 2026-09-21 | definitive GFZ archive; zero incomplete months in 94 years |

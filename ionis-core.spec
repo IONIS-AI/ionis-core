@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.5.2
+Version:        4.5.3
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,17 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.3-1
+- 22-pskr_schema_v1.sql: pskr.bronze is FROZEN (2026-02-10 .. 2026-09-26 15:24:47 UTC,
+  7,246,715,981 rows; pskr-collector and pskr-ingest retired in ionis-apps 4.9.0).
+  Table comment says so and points to pskr.capture_bronze; sender_grid / receiver_grid
+  comments say the old regex left them EMPTY for valid grids; band is documented as a
+  lab code, not an ADIF value. Applied to the existing table by idempotent ALTER ...
+  COMMENT statements (#37).
+- verify_pskr_capture_ingest.sh: a closed capture file not yet in the table is PENDING,
+  not a failure, for PENDING minutes (default 70, one ingest period plus margin); older
+  than that it still fails. The audit no longer fails for most of every hour.
+- DATA-DICTIONARY.md: pskr.bronze row and coverage marked frozen.
 * Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.2-1
 - verify_kp_ingest.sh, verify_ssn_ingest.sh, verify_sfi_ingest.sh: balance by count, sum
   and XOR of line numbers (file side by gawk, table side by SQL), replacing the comm(1)
