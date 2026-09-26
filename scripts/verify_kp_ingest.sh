@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # verify_kp_ingest.sh -- does solar.kp_bronze hold every data line of GFZ's Kp file?
 #
-# 1. LINES: the SET of data-line numbers in the file == the SET of line_no in the
-#    table, compared both ways, so a lost line cannot hide behind an extra one. File
+# 1. LINES: the file's data-line numbers and the table's line_no agree in count,
+#    sum and XOR, so a lost line cannot hide behind an extra one and an equal-count
+#    swap is caught. File
 #    side read with awk (non-blank, not '#'), not with solar-kp-ingest. Fails on a
 #    difference.
 # 2. COVERAGE: Kp is eight 3-hour intervals a day. Days in the file's span with any
@@ -21,17 +22,18 @@ ch() { clickhouse-client --host "$CH_HOST" -q "$1" 2>/dev/null; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 
 awk '{t=$0; gsub(/^[ \t]+/,"",t)} t!="" && t !~ /^#/ {print NR}' "$FILE" > "$tmp/file.lines"
-ch "SELECT line_no FROM $TABLE FORMAT TSV" > "$tmp/table.lines"
-# comm needs both sides in the SAME text collation; numeric order is not that (10 < 9
-# as text). Sort both with sort(1), or comm warns and its missing/extra counts are wrong.
-LC_ALL=C sort -o "$tmp/file.lines" "$tmp/file.lines"
-LC_ALL=C sort -o "$tmp/table.lines" "$tmp/table.lines"
-f=$(wc -l < "$tmp/file.lines"); t=$(wc -l < "$tmp/table.lines")
-mf=$(LC_ALL=C comm -23 "$tmp/file.lines" "$tmp/table.lines" | wc -l); mt=$(LC_ALL=C comm -13 "$tmp/file.lines" "$tmp/table.lines" | wc -l)
+ch "SELECT count(), sum(line_no), groupBitXor(line_no) FROM $TABLE FORMAT TSV" > "$tmp/table.agg"
+# BALANCE BY COUNT, SUM AND XOR of the line numbers, file side vs table side. A lost line
+# cannot hide behind an extra one, and an equal-count swap changes the sum and the XOR.
+# Replaces a comm(1) set-diff, which needed both sides in the same text collation and got
+# it wrong once (numeric order fed to comm, 2026-09-25); this has no sort order at all.
+# Every value stays exact in awk's doubles (the largest file, Kp, sums to ~4e10).
+read -r fc fs fx < <(gawk '{ c++; s += $1; x = xor(x, $1) } END { printf "%d %d %d\n", c, s, x }' "$tmp/file.lines")
+read -r tc ts tx < "$tmp/table.agg"
 rc=0
 echo "== 1. LINES: $FILE vs $TABLE"
-printf '  file data lines %d · table rows %d · lines missing from table %d · rows with no such line %d\n' "$f" "$t" "$mf" "$mt"
-{ [ "$f" -ne "$t" ] || [ "$mf" -ne 0 ] || [ "$mt" -ne 0 ]; } && rc=1
+printf '  file data lines %d · table rows %d · line-number sum %d / %d · xor %d / %d (file / table)\n' "$fc" "$tc" "$fs" "$ts" "$fx" "$tx"
+{ [ "$fc" != "$tc" ] || [ "$fs" != "$ts" ] || [ "$fx" != "$tx" ]; } && rc=1
 echo "  no Kp value (-1 -> NULL): $(ch "SELECT countIf(kp IS NULL AND parse_error = '') FROM $TABLE") · unreadable kept: $(ch "SELECT countIf(parse_error != '') FROM $TABLE")"
 
 echo

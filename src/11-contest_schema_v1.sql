@@ -25,6 +25,12 @@
 -- removing duplicates -- the same QSO in both stations' logs, a log a publisher
 -- serves under two years -- is silver's job.
 --
+-- GRID LOCATORS (Watson, 2026-09-26). bronze stores QSO lines only; a log's GRID-LOCATOR:
+-- header is read by contest-ingest solely for the optional -enrich write to
+-- wspr.callsign_grid, and there it accepts 4- or 6-character grids after upper-casing
+-- (so case is never a reason to drop one). An 8- or 10-character header grid is not
+-- accepted. Header-only, not per-QSO data, and not in bronze -- recorded so it is known.
+--
 -- Physical order is archive order: (source, file_path, line_no) reads a log back the
 -- way the file holds it. Partitioned by the year the directory declares, so a year
 -- can be reloaded or dropped on its own.

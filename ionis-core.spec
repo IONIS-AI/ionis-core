@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.5.1
+Version:        4.5.2
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -100,6 +100,13 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/data/*.tsv
 
 %changelog
+* Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.2-1
+- verify_kp_ingest.sh, verify_ssn_ingest.sh, verify_sfi_ingest.sh: balance by count, sum
+  and XOR of line numbers (file side by gawk, table side by SQL), replacing the comm(1)
+  set-diff -- one idiom across every line audit, no sort order to get wrong (Watson).
+  Each re-verified live (exit 0) and against an in-place equal-count swap (exit 1).
+- 11-contest_schema_v1.sql: document that the GRID-LOCATOR header (enrichment only, not
+  in bronze) accepts 4/6-character grids, case-insensitively.
 * Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.1-1
 - verify_pskr_capture_ingest.sh: sq gaps are reported as an UPPER BOUND on capture loss,
   not as messages "that never reached us". A second independent client over the same
