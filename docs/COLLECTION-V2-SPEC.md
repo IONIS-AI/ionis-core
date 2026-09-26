@@ -87,9 +87,10 @@ byte-identical is an asset and is preserved.
 
 | column | type | note |
 |---|---|---|
-| `tx_grid_4` | `CHAR(4)` | Maidenhead, fixed width |
-| `rx_grid_4` | `CHAR(4)` | |
-| `band` | `SMALLINT` | ADIF band id |
+| `my_gridsquare_4` | `CHAR(4)` | ADIF `MY_GRIDSQUARE`, truncated to the 4-char aggregation grain |
+| `gridsquare_4` | `CHAR(4)` | ADIF `GRIDSQUARE` |
+| `observation_type` | `ENUM` | `reception_report` \| `qso` — mandatory, see §3.1 |
+| `band` | `SMALLINT` | **lab** band id, `ionis.band_id_lab` — not an ADIF field |
 | `hour` | `SMALLINT` | UTC 0–23, climatology bucket |
 | `month` | `SMALLINT` | 1–12, climatology bucket |
 | `signal_metric` | `REAL` | was `median_snr` |
@@ -104,10 +105,43 @@ byte-identical is an asset and is preserved.
 They are not a date and not a live condition. Consumers must present them as such; `05:00 UTC,
 month 6` is "typical conditions at that hour in that month", not a moment in time.
 
-### 2.1 Columns removed
+### 3.1 The second defect: one schema describing two kinds of observation
+
+Reconciled against the ADIF-Anchored Dimensions record, 2026-09-26.
+
+This spec previously carried `tx_grid_4` and `rx_grid_4`, and treated the four byte-identical v1
+schemas as an asset to preserve. The identical shape is real; treating it as correct was the
+mistake. `tx_grid_4` meant **opposite things** across those four schemas —
+`populate_contest_signatures.sh:176` joins on `call_1`, the *logging* station, while RBN joins on
+`dx_call`, the station heard, and PSKR on `sender_grid`.
+
+The cause is not a bad join. A spot has a real transmitter and a real receiver, so `tx`/`rx` is
+meaningful. **A QSO has neither, because both stations transmit** — which is why the contest join
+direction was arbitrary enough to end up inverted and stay unnoticed.
+
+ADIF's roles are true of both, and never assert who transmitted:
+
+| ADIF | means | reception report | QSO |
+|---|---|---|---|
+| `MY_GRIDSQUARE` | the logging / reporting station | the receiver | the logger |
+| `GRIDSQUARE` | the other station | the station heard | the contacted station |
+
+So `observation_type` is **mandatory and never defaulted**, for the same reason `metric_kind` is:
+`spot_count` counts one-way receptions for a spot source and logged QSOs for contest, and
+`reliability` derived from one-way reports is not the same quantity as from two-way contacts. An
+aggregate spanning more than one `observation_type` is invalid by construction.
+
+`tx`/`rx` may still be *derived* by a consumer for spot sources, where it is meaningful. It must
+not be a stored column.
+
+*Mitigating:* `contest.signatures` holds 0 rows today, so no published data is 180° inverted. The
+defect is in the generator, and v2 is regenerated (§1), so this is closed by construction rather
+than by a migration.
+
+### 3.2 Columns removed
 
 **`avg_distance` and `avg_azimuth` are dropped.** They are pure functions of
-`(tx_grid_4, rx_grid_4)` — great-circle distance and initial bearing — and cost **263 MB in the
+`(my_gridsquare_4, gridsquare_4)` — great-circle distance and initial bearing — and cost **263 MB in the
 WSPR file alone (15.3% of it)**. A dozen lines of arithmetic in the consumer replaces them. They
 were defensible when a desktop application read SQLite row-wise; they are not when a columnar
 engine can compute them on the fly over a pruned result set.
@@ -165,7 +199,7 @@ Three reasons, only the first of which is about query speed:
 
 Four facts about v1 are discoverable only by looking for them:
 
-- **The collection is HF only, and 278.6 M spots are outside it.** Signatures cover ADIF band ids
+- **The collection is HF only, and 278.6 M spots are outside it.** Signatures cover lab band ids
   102–111 — 160 m through 10 m, ten bands. `wspr.bronze` holds **278,565,341 rows (2.2%)** on
   bands the collection never publishes: **630 m alone is 216.4 M spots**, 2200 m is 20.9 M, and
   6 m / 4 m / 2 m / 70 cm total 31.0 M. Verified against `10.60.1.1` 2026-09-23; the band ids are
