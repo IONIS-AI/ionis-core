@@ -9,17 +9,17 @@ was not in the room.
 
 Nothing in v1.0 changes while this runs. v1.0 stays the published collection until v2 replaces it.
 
-## The live board
+## Paused behind the data spec (Judge, 2026-09-26)
 
-**https://claude.ai/artifact/DRngCtf22nyFkCqKW4qAyq** — Judge's status view of this plan.
+Data work stopped on 2026-09-26 as a CLCA stop: the root cause of this week's bronze defects was
+that no specification defined our data structures. The order is now:
 
-**This file is the record; the board is the window.** When they disagree, this file wins and the
-board is corrected. Specs, gates and sign-offs are reviewed and versioned here, in git, because
-that is where chain of custody lives — a hosted page has no diff, no PR, and no signed authorship.
+1. **The data spec**, [`IONIS-DATA-SPEC.md`](IONIS-DATA-SPEC.md), ADIF 3.1.7 plus the IONIS-AI extension.
+   It defines every field; this plan and `COLLECTION-V2-SPEC.md` do not redefine any.
+2. **The PG-1 database initialised from it** (the `adif` reference tier first).
+3. **Then the remaining source work** (Phase 0 below), then Phases 1 to 9.
 
-**Updating it:** republish to that URL. An agent that publishes a new board without passing this
-URL creates a *second* artifact, and Judge's bookmark then silently tracks a stale page. The link
-lives in this file so any session can find it.
+This file is the only copy of the plan. There is no hosted board.
 
 ---
 
@@ -27,7 +27,7 @@ lives in this file so any session can find it.
 
 | phase | what | owner | gate | state |
 |---|---|---|---|---|
-| **0** | Bronze is trustworthy | Bob | every source audits archive = bronze, 0 residual | **in progress** |
+| **0** | Bronze is trustworthy | Bob | every source audits archive = bronze, 0 residual | **paused behind the data spec** |
 | **1** | Decide what v2 contains | Judge | every table classified; no "undecided" | not started |
 | **2** | Name everything | Watson → Bob | every dataset has a name and a grain sentence | not started |
 | **3** | Silver where it is missing | Bob | every published gold extracts from a silver | not started |
@@ -54,10 +54,12 @@ mistake — freezing a published collection from a bronze that was about to be c
 |---|---|
 | Contest download → ingest → bronze | **done** — 387,893,061 rows, 0 missing, ~1 min reload, audit packaged |
 | Solar bronze rebuild — Kp, SFI, SSN own tables | **done** |
-| Solar kept current — schedule the new pairs, retire dead units | in progress |
-| Solar history backfill — DSCOVR to 2016-07-26, GOES X-ray archive | queued |
-| WSPR / RBN / PSKR — audit, keep-every-record, reload to 0 | queued, PSKR first |
-| Contest download scheduling | queued |
+| Solar kept current — schedule the new pairs, retire dead units | **done** (ionis-apps #34) |
+| Solar history backfill — DSCOVR to 2016-07-26, GOES X-ray archive | **done** (#35, #36; SFI every line #46) |
+| PSKR — faithful capture, cutover, old collector retired | **done** (ionis-apps 4.9.0, ionis-core 4.5.3; `pskr.bronze` frozen at 7,246,715,981 rows) |
+| WSPR — reload from the raw archive (frequency stored as whole MHz; 239 M rows as 0) | after the data spec |
+| RBN — archive-to-bronze audit, keep every record | after the data spec (#38) |
+| Contest download scheduling | after the data spec (#40) |
 
 **Two additions to Bob's item 1, from verification on 2026-09-23:**
 

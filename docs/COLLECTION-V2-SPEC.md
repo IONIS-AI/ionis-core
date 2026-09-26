@@ -107,7 +107,7 @@ month 6` is "typical conditions at that hour in that month", not a moment in tim
 
 ### 3.1 The second defect: one schema describing two kinds of observation
 
-Reconciled against the ADIF-Anchored Dimensions record, 2026-09-26.
+Reconciled against the data spec, [`IONIS-DATA-SPEC.md`](IONIS-DATA-SPEC.md) (formerly the "ADIF-Anchored Dimensions" record), 2026-09-26.
 
 This spec previously carried `tx_grid_4` and `rx_grid_4`, and treated the four byte-identical v1
 schemas as an asset to preserve. The identical shape is real; treating it as correct was the
