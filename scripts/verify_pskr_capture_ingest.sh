@@ -23,6 +23,13 @@
 # Files still being written (.partial touched within STALE minutes) are skipped, the
 # same rule pskr-capture-ingest uses.
 #
+# PENDING, NOT FAILED. The capture closes a file every hour and the ingest timer runs
+# hourly, so for most of every hour one finished file is waiting for the next run. Before
+# this rule the audit failed during that wait, and an audit that usually fails is an audit
+# nobody reads. A closed file missing from the table is now PENDING if it closed less than
+# PENDING minutes ago (default 70: one timer period plus margin). Older than that it still
+# FAILS, so a stuck ingest cannot hide behind the rule.
+#
 # Usage: CH_HOST=10.60.1.1 SRC=/mnt/pskr-data/capture TABLE=pskr.capture_bronze scripts/verify_pskr_capture_ingest.sh
 # Exit 0 if section 1 balances, 1 otherwise.
 set -uo pipefail
@@ -31,6 +38,7 @@ CH_HOST="${CH_HOST:-${IONIS_CH_HOST:-10.60.1.1}}"; CH_HOST="${CH_HOST%%:*}"
 SRC="${SRC:-${IONIS_PSKR_DATA_DIR:-/mnt/pskr-data}/capture}"
 TABLE="${TABLE:-pskr.capture_bronze}"
 STALE="${STALE:-120}"
+PENDING="${PENDING:-70}"
 ch() { clickhouse-client --host "$CH_HOST" -q "$1" 2>/dev/null; }
 [ -d "$SRC" ] || { echo "no capture root at $SRC"; exit 2; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
@@ -38,6 +46,8 @@ tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 # Files the ingester would have loaded: completed hours, and .partial untouched for STALE minutes.
 { find "$SRC" -type f -name 'capture-*.jsonl.gz'; find "$SRC" -type f -name 'capture-*.jsonl.gz.partial' -mmin +"$STALE"; } | sort > "$tmp/files"
 active=$(find "$SRC" -type f -name 'capture-*.jsonl.gz.partial' -mmin -"$STALE" | wc -l)
+# Closed within PENDING minutes: allowed to be absent from the table (see PENDING above).
+find "$SRC" -type f -name 'capture-*.jsonl.gz' -mmin -"$PENDING" | sed "s|^$SRC/||" | sort > "$tmp/pending"
 while read -r f; do
   n=$(zcat "$f" 2>/dev/null | awk 'END{print NR}')
   printf '%s\t%s\n' "${f#$SRC/}" "$n"
@@ -47,16 +57,17 @@ ch "SELECT file_path, count(), sum(line_no), groupBitXor(line_no) FROM $TABLE GR
 rc=0
 echo "== 1. BALANCE: capture files vs $TABLE (proven)"
 gawk -F'\t' 'function x1n(k) { r = k % 4; return r == 0 ? k : r == 1 ? 1 : r == 2 ? k + 1 : 0 }
-NR==FNR {n[$1]=$2; next} {t[$1]=$2" "$3" "$4} END {
-  files=0; lines=0; bad=0
+FILENAME==ARGV[1] {pend[$1]=1; next} FILENAME==ARGV[2] {n[$1]=$2; next} {t[$1]=$2" "$3" "$4} END {
+  files=0; lines=0; bad=0; pending=0
   for (f in n) { files++; lines+=n[f]; k=n[f]; want=sprintf("%d %d %d", k, k*(k+1)/2, x1n(k))
-    if (!(f in t)) { bad++; if (bad<=10) print "  NOT IN TABLE: " f " (" k " lines)"; continue }
+    if (!(f in t) && (f in pend)) { pending++; print "  PENDING: " f " (" k " lines; closed under '"$PENDING"' min ago, the next hourly ingest loads it)"; continue }
+    if (!(f in t)) { bad++; if (bad<=10) print "  NOT IN TABLE: " f " (" k " lines; closed over '"$PENDING"' min ago)"; continue }
     if (t[f] != want) { bad++; if (bad<=10) print "  MISMATCH: " f "  file 1.." k " wants " want "  table count,sum,xor = " t[f] }
   }
   for (f in t) if (!(f in n)) { bad++; if (bad<=10) print "  IN TABLE, NOT ON DISK: " f }
-  printf "  files %d · lines %d · files that do not balance %d\n", files, lines, bad
+  printf "  files %d · lines %d · pending %d · files that do not balance %d\n", files, lines, pending, bad
   exit (bad > 0)
-}' "$tmp/file.n" "$tmp/table.agg" || rc=1
+}' "$tmp/pending" "$tmp/file.n" "$tmp/table.agg" || rc=1
 echo "  still being written (skipped): $active"
 
 echo
@@ -79,5 +90,5 @@ echo "== 3. COMPLETENESS against the live feed: NOT PROVABLE after the fact."
 echo "  PSK Reporter keeps no archive. Section 1 proves bronze holds every line captured;"
 echo "  section 2 measures what is known to be missing. Neither proves nothing else was lost."
 echo
-[ "$rc" -eq 0 ] && echo "every capture line is a row: capture == bronze" || echo "CAPTURE AND BRONZE DIFFER (see section 1)"
+[ "$rc" -eq 0 ] && echo "every capture line is a row: capture == bronze (files still pending load are listed above)" || echo "CAPTURE AND BRONZE DIFFER (see section 1)"
 exit $rc
