@@ -227,6 +227,10 @@ DDL applies clean from a fresh schema. A round-trip test proves an aggregate spa
 
 ## Phase 5 — Generate
 
+> **Superseded in part (2026-09-26).** v2 ships as PostgreSQL tables in Docker images on docker.io,
+> not as Parquet and SQLite files on SourceForge. See `COLLECTION-V2-SPEC.md` §7. This phase is
+> rewritten to match when the phases are re-planned.
+
 **On the 9975, in ClickHouse.** That is where bronze and silver live, it is the only engine in the
 lab that writes well-encoded Parquet, and it is a batch job rather than a service. Compute once on
 the powerhouse; the artifact is inert afterwards and renders anywhere.
@@ -267,6 +271,10 @@ All seven pass. A failure here returns to the phase that caused it — not a pat
 
 ## Phase 7 — Publish
 
+> **Superseded in part (2026-09-26).** v2 ships as PostgreSQL tables in Docker images on docker.io,
+> not as Parquet and SQLite files on SourceForge. See `COLLECTION-V2-SPEC.md` §7. This phase is
+> rewritten to match when the phases are re-planned.
+
 - SourceForge layout under `v2.0`, alongside `v1.0` which stays
 - Parquet, SQLite, manifests, checksums
 - **Two licences, stated separately** — Apache-2.0 for code, the data licence for the collection
@@ -298,6 +306,10 @@ inherited from a retired engine.
 ---
 
 ## Phase 9 — Atlas consumes v2
+
+> **Superseded in part (2026-09-26).** v2 ships as PostgreSQL tables in Docker images on docker.io,
+> not as Parquet and SQLite files on SourceForge. See `COLLECTION-V2-SPEC.md` §7. This phase is
+> rewritten to match when the phases are re-planned.
 
 Per `fleet-ops` Atlas spec. Both paths — hosted browser and container — read v2, and R12's parity
 test proves the two drivers agree.

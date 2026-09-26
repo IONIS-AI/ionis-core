@@ -2,8 +2,8 @@
 
 **Status: DRAFT.** Nothing here is built. v1.0 remains the published collection until v2 ships.
 
-This specifies the *next* cut of the published IONIS collection — the artifact that SourceForge
-distributes and that the IONIS Propagation Atlas renders. It is a companion to
+This specifies the *next* cut of the published IONIS collection: PostgreSQL tables shipped as
+Docker images on docker.io (§7), read directly by the IONIS-AI Atlas. It is a companion to
 [`DATA-DICTIONARY.md`](DATA-DICTIONARY.md), which remains authoritative for what exists **now**.
 Where this document and the dictionary disagree, the dictionary is describing the live lab and
 this document is describing an intention.
@@ -147,6 +147,12 @@ were defensible when a desktop application read SQLite row-wise; they are not wh
 engine can compute them on the fly over a pruned result set.
 
 ## 4. Physical layout
+
+> **Superseded in part (2026-09-26).** v2 ships as PostgreSQL tables in Docker images, not Parquet
+> files (§7). The measurements below were taken on v1's Parquet and still say which columns cost
+> the most, but the Parquet-specific choices (ZSTD, hive partitioning, row-group size) no longer
+> apply. Rewriting this section as PostgreSQL layout (partitioning, indexes, column types) is open
+> in §8.
 
 Measured against v1's `wspr_signatures_v2.parquet` (93,596,266 rows, 1.72 GB, 90 row groups):
 
@@ -312,12 +318,63 @@ table agree in v2.
 >
 > Settling this list is a prerequisite of v2, not a detail of it.
 
-| artifact | format | consumer |
+### How it ships: Docker images on docker.io
+
+**Judge, 2026-09-26.** The collection ships as **PostgreSQL tables inside Docker images**, and the
+Atlas reads them directly. There are **no published files**: no Parquet, no SourceForge release of
+v2, no browser engine, no hosted path. A user runs `docker compose up` and has the collection and
+the Atlas together.
+
+**Three kinds of image, versioned independently**, because they change at different rates. Judge:
+*"data and the apps should be separate, we'll be adding a lot of data, but it won't change a lot,
+but the app may."*
+
+| image | holds | changes |
 |---|---|---|
-| signatures | **Parquet**, partitioned | Atlas, pandas, Polars, R, DuckDB, ClickHouse |
-| signatures | SQLite | IONIS-AI MCP servers — a live consumer, retained |
-| dimensions (`grid_lookup`, `solar_indices`, `dscovr`, `balloon_callsigns`) | Parquet + SQLite | shipped whole; 135 MB combined, cached once |
-| manifests | JSON | every consumer |
+| `ionis-ai-atlas` | the Atlas application: React front end, FastAPI API | often |
+| `ionis-ai-atlas-db` | the engine: PostgreSQL 17 + pgvector, its tuning, and the **reference data** (the `adif` schema and the `ionis` dimensions), loaded and audited at build time | rarely: an ADIF release, a PostgreSQL update, a dimension change |
+| `ionis-ai-atlas-data-<dataset>` | **one dataset**: its `pg_dump` (custom format) and its `collection.manifest` row | when that dataset is added or regenerated |
+
+**Rules:**
+
+- **Reference data is baked into the engine image.** It is small, fixed per ADIF version, and the
+  image build fails if its audit does, so an engine image that exists is one whose reference data
+  was verified.
+- **Each data image restores itself once.** On start it restores its dump into the engine's
+  database, **only if that dataset at that version is not already there**, and records the result
+  in `collection.manifest`. Adding a dataset downloads that dataset and nothing else; an application
+  update downloads no data at all.
+- **No volume ever hides newer data.** Datasets live in the database volume and are replaced by
+  version, never by the engine image's own data directory. A named volume mounted over data baked
+  into an image keeps serving the old data after an upgrade, so collection data is never baked
+  into the engine.
+- **A `pg_dump` does not depend on the CPU architecture**, so each data image is built and pushed
+  once. The application and engine images are multi-arch: `linux/amd64` and `linux/arm64`.
+- **Every image is built on Red Hat UBI 9**, as the Atlas specification requires: the RHEL
+  userspace, freely redistributable, so public images carry no licence question. Rocky is the
+  lab's host OS, not an image base.
+- **Tags are immutable.** A tag, once pushed, is never moved. Data images are tagged by collection
+  schema version and freeze date (for example `v2-2026.09`), so the tag says what is inside.
+- **Signed, with an SBOM and build provenance**, per the Atlas specification.
+
+**Where the images live.** One docker.io account, `ki7mt` (Judge, 2026-09-26: the project is
+published under the callsign; no separate `ionis-ai` docker.io account). Visibility is set per
+repository:
+
+| | repositories | visibility | purpose |
+|---|---|---|---|
+| **dev** | `ki7mt/<image>-dev` | private | a full rehearsal of the publish process: push, multi-arch manifest, signing, then a clean pull |
+| **prod** | `ki7mt/<image>` | public | what users run |
+
+The source stays in the `IONIS-AI` GitHub organisation. The push credential is in Vault at
+`secret/dockerhub/account/ki7mt`, never in a local `docker login`.
+
+**The IONIS-AI MCP servers keep reading v1's SQLite from SourceForge, unchanged** (Judge,
+2026-09-26: "that can stay as is for now"). v2 publishes no SQLite. What the MCP servers read once
+v2 ships is open (§8).
+
+**Collection dimensions** (`grid_lookup`, `solar_indices`, `dscovr`, `balloon_callsigns`) ship as
+a data image of their own, frozen with the collection they describe.
 
 **Naming fix carried from v1:** `balloon_callsigns_v2.sqlite` contains a table named
 `balloon_callsigns`. File and table agree in v2.
@@ -327,11 +384,16 @@ Atlas release must be able to read an older collection and say plainly when it c
 forcing an application release for every data regeneration.
 
 **Two licences, stated separately.** Code is Apache-2.0; the collection carries its own data
-licence. They are different artifacts with different terms and are not to be conflated in one
+licence, stated in each data image's labels and in its manifest row. They are different artifacts with different terms and are not to be conflated in one
 LICENSE reference.
 
 ## 8. Open
 
+- **§4 and §9 in PostgreSQL terms.** Both were written for Parquet files. §4 needs the PostgreSQL
+  layout (partitioning by `metric_kind` and `band`, indexes, column types) measured against the
+  Atlas's queries on the target machine; §9 item 4 needs its PostgreSQL equivalent.
+- **What the MCP servers read after v2.** Either the Atlas database, or a SQLite built from the
+  same source. v1's SQLite stays until this is decided.
 - **Does `snr_std` survive?** It is 345.5 MB — the third-largest column in the file — and earns
   its place only if a consumer renders dispersion or error bars. If nothing does, it is the
   largest unjustified cost in the schema.
@@ -351,18 +413,19 @@ LICENSE reference.
 
 ## 9. Generation and acceptance
 
-**Generated on the 9975 in ClickHouse.** That is where bronze and silver live, it is the only
-engine in the lab that writes well-encoded Parquet, and the work is a batch job rather than a
-service. Compute once on the powerhouse; the artifact is then inert and renders anywhere.
+**Generated on the 9975 from ClickHouse.** That is where bronze and silver live, and the work is a
+batch job rather than a service. Compute once on the powerhouse, load into PostgreSQL, and dump
+each dataset into its data image (§7).
 
 v2 is not published until:
 
 1. Every dataset has a manifest and every manifest validates against its schema.
 2. Row counts reconcile to the generating silver with **zero residual**.
 3. No `metric_kind` is null, and no shipped aggregate spans more than one.
-4. A `band + hour` query against the published Parquet reads **under 10% of the file**, measured
-   rather than assumed.
-5. Published checksums verify from a clean download.
+4. ~~A `band + hour` query against the published Parquet reads under 10% of the file.~~
+   Superseded: v2 is not Parquet. Its PostgreSQL equivalent is open (§8).
+5. Every image verifies from a clean pull: signature, SBOM and provenance present, and each data
+   image restores and reconciles to its manifest row count.
 6. **Every dataset's manifest carries its grain as one sentence**, and every published name
    follows §6. A dataset whose grain cannot be stated is not ready to publish, whatever its row
    count.
