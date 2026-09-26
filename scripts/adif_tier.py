@@ -26,6 +26,7 @@ USAGE
   adif_tier.py ddl  --spec-dir DIR --pins FILE                 > src/pg/10-adif_schema.sql
   adif_tier.py load --spec-dir DIR --pins FILE --version 3.1.7 > load.sql   (psql -1 -f load.sql)
   adif_tier.py audit --spec-dir DIR --pins FILE --version 3.1.7          (SQL that must return 0 rows)
+  adif_tier.py set-current --spec-dir DIR --pins FILE --version 3.1.7    (move the lab-wide pointer)
 
 DIR holds one sub-directory per version (316/, 317/), each with ADIF's all.json -- the layout
 adif-mcp ships. Standard library only.
@@ -197,6 +198,15 @@ def ddl(versions: dict) -> str:
         "    loaded_at     timestamptz NOT NULL DEFAULT now()",
         ");",
         "",
+        "-- The lab-wide CURRENT ADIF version (spec: one pointer; rows pin at write and re-pin only",
+        "-- by explicit migration). One row, enforced. Loading a version never moves it: set it",
+        "-- deliberately with `adif_tier.py set-current --version X`.",
+        "CREATE TABLE IF NOT EXISTS adif.current (",
+        "    singleton     boolean PRIMARY KEY DEFAULT TRUE CHECK (singleton),",
+        "    adif_version  text NOT NULL REFERENCES adif.release (adif_version),",
+        "    set_at        timestamptz NOT NULL DEFAULT now()",
+        ");",
+        "",
     ]
 
     def table(name, hdrs, key_cols, extra=""):
@@ -336,7 +346,7 @@ def audit_sql(adif: dict) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", choices=["ddl", "load", "audit"])
+    ap.add_argument("action", choices=["ddl", "load", "audit", "set-current"])
     ap.add_argument("--spec-dir", required=True)
     ap.add_argument("--pins", required=True, help="SHA-256 manifest of adif.org's exports")
     ap.add_argument("--version", help="ADIF version for load/audit, e.g. 3.1.7")
@@ -347,7 +357,14 @@ def main() -> None:
         sys.stdout.write(ddl(all_versions(a.spec_dir, pins)))
         return
     if not a.version:
-        sys.exit("--version is required for load and audit")
+        sys.exit("--version is required for load, audit and set-current")
+    if a.action == "set-current":
+        v = a.version.replace("'", "")
+        sys.stdout.write(
+            f"-- Point the lab at ADIF {v}. Fails if {v} is not loaded (foreign key to adif.release).\n"
+            f"INSERT INTO adif.current (singleton, adif_version) VALUES (TRUE, '{v}')\n"
+            f"ON CONFLICT (singleton) DO UPDATE SET adif_version = EXCLUDED.adif_version, set_at = now();\n")
+        return
     vdir = a.version.replace(".", "")
     if vdir not in pins["versions"]:
         sys.exit(f"ADIF {a.version} has no pinned checksum; add it to {a.pins} first")

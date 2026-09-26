@@ -226,6 +226,7 @@ Not in ClickHouse. ADIF's own definitions, loaded from ADIF's published `all.jso
 | Table | Rows per version (3.1.7) | Key | DDL |
 |---|---:|---|---|
 | `adif.release` | 1 | `adif_version` (plus source URL and SHA-256) | `pg/10-adif_schema.sql` |
+| `adif.current` | 1 (one row, enforced) | the lab-wide current ADIF version; loading never moves it, `adif_tier.py set-current` does | `pg/10-adif_schema.sql` |
 | `adif.datatype` | 28 | `(adif_version, data_type_name)` | `pg/10-adif_schema.sql` |
 | `adif.field` | 186 | `(adif_version, field_name)` | `pg/10-adif_schema.sql` |
 | `adif.<enumeration>` × 25 | 3,345 in all | `(adif_version, record_key)`, ADIF's own record key; a unique natural key where ADIF's data has one | `pg/10-adif_schema.sql` |

@@ -17,6 +17,15 @@ CREATE TABLE IF NOT EXISTS adif.release (
     loaded_at     timestamptz NOT NULL DEFAULT now()
 );
 
+-- The lab-wide CURRENT ADIF version (spec: one pointer; rows pin at write and re-pin only
+-- by explicit migration). One row, enforced. Loading a version never moves it: set it
+-- deliberately with `adif_tier.py set-current --version X`.
+CREATE TABLE IF NOT EXISTS adif.current (
+    singleton     boolean PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+    adif_version  text NOT NULL REFERENCES adif.release (adif_version),
+    set_at        timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS adif.datatype (
     adif_version text NOT NULL REFERENCES adif.release (adif_version),
     data_type_name                           text,

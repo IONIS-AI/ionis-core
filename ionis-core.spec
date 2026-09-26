@@ -123,6 +123,9 @@ echo "------------------------------------------------------------"
   (jsonb). Column types and foreign keys are decided from the data across all pinned
   versions; list-valued references (CREDIT_* data types, ARRL_Section DXCC lists) are
   checked inside the load transaction. src/pg/10-adif_schema.sql is generated; do not edit.
+- adif.current: the single lab-wide current-version pointer (spec rev 42). One row,
+  enforced; loading a version never moves it; `adif_tier.py set-current` does, and
+  refuses a version that is not loaded.
 * Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.5.3-1
 - 22-pskr_schema_v1.sql: pskr.bronze is FROZEN (2026-02-10 .. 2026-09-26 15:24:47 UTC,
   7,246,715,981 rows; pskr-collector and pskr-ingest retired in ionis-apps 4.9.0).
