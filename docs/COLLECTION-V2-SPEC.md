@@ -359,7 +359,8 @@ but the app may."*
   lab's host OS, not an image base.
 - **Tags are immutable.** A tag, once pushed, is never moved. Data images are tagged by collection
   schema version and freeze date (for example `v2-2026.09`), so the tag says what is inside.
-- **Signed, with an SBOM and build provenance**, per the Atlas specification.
+- **With an SBOM and build provenance**, per the Atlas specification. Image signing is planned,
+  not required to release (Judge, 2026-09-27).
 
 **Where the images live.** One docker.io account, `ki7mt` (Judge, 2026-09-26: the project is
 published under the callsign; no separate `ionis-ai` docker.io account). Visibility is set per
@@ -367,7 +368,7 @@ repository:
 
 | | repositories | visibility | purpose |
 |---|---|---|---|
-| **dev** | **one** repository, `ki7mt/ionis-ai-atlas-dev`, the image kind in the tag (`app-<sha>`, `db-<sha>`, `data-<dataset>-<sha>`) | private | a full rehearsal of the publish process: push, multi-arch manifest, signing, then a clean pull |
+| **dev** | **one** repository, `ki7mt/ionis-ai-atlas-dev`, the image kind in the tag (`app-<sha>`, `db-<sha>`, `data-<dataset>-<sha>`) | private | a full rehearsal of the publish process: push, multi-arch manifest, then a clean pull |
 | **prod** | `ki7mt/<image>` | public | what users run |
 
 Docker Hub's free plan allows one private repository, so dev uses one (Judge, 2026-09-27: "one
