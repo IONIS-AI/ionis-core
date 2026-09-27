@@ -1,5 +1,5 @@
 Name:           ionis-core
-Version:        4.6.0
+Version:        4.6.1
 Release:        1%{?dist}
 Summary:        Core database schemas for the IONIS propagation analysis system
 
@@ -111,6 +111,18 @@ echo "------------------------------------------------------------"
 %{_datadir}/%{name}/pg/*.sql
 
 %changelog
+* Sun Sep 27 2026 Bob <bob@ipa.home.arpa> - 4.6.1-1
+- The generated ADIF DDL now upgrades an EXISTING database, not only a fresh one (Atlas
+  SPEC R17, IONIS-AI/ionis-ai-atlas#41). Re-applied on every start, each step idempotent:
+  new columns added (ADD COLUMN IF NOT EXISTS), a column whose values stopped fitting its
+  type widened to text, natural-key indexes and cross-reference keys rebuilt (keys dropped
+  before any column is altered, re-added at the end). Before this, a release that added a
+  column, reused a unique code or turned an integer into a list failed to load into a
+  database holding older versions.
+- scripts/test-adif-tier-upgrade.py (make test-adif-upgrade): a synthetic next version with
+  those three changes, upgraded in place and loaded fresh in throwaway PostgreSQL; both must
+  audit clean and end with the same shape, and the generator on main must fail (control).
+
 * Sat Sep 26 2026 Bob <bob@ipa.home.arpa> - 4.6.0-1
 - ADIF reference tier for PG-1 (the one `ionis` database; Judge 2026-09-26). New
   scripts/adif_tier.py generates the `adif` schema and each version's load from ADIF's
