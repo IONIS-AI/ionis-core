@@ -367,10 +367,12 @@ repository:
 
 | | repositories | visibility | purpose |
 |---|---|---|---|
-| **dev** | `ki7mt/<image>-dev` | private | a full rehearsal of the publish process: push, multi-arch manifest, signing, then a clean pull |
+| **dev** | **one** repository, `ki7mt/ionis-ai-atlas-dev`, the image kind in the tag (`app-<sha>`, `db-<sha>`, `data-<dataset>-<sha>`) | private | a full rehearsal of the publish process: push, multi-arch manifest, signing, then a clean pull |
 | **prod** | `ki7mt/<image>` | public | what users run |
 
-The source stays in the `IONIS-AI` GitHub organisation. The push credential is in Vault at
+Docker Hub's free plan allows one private repository, so dev uses one (Judge, 2026-09-27: "one
+private repo; anything else will have to be public from the get go"). The source stays in the
+`IONIS-AI` GitHub organisation. The push credential is in Vault at
 `secret/dockerhub/account/ki7mt`, never in a local `docker login`.
 
 **The IONIS-AI MCP servers keep reading v1's SQLite from SourceForge, unchanged** (Judge,
