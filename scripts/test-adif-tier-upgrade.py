@@ -18,11 +18,12 @@ Then, in a throwaway PostgreSQL (Red Hat sclorg, CentOS Stream 9, pinned by dige
             next. Every version audits clean; applying the DDL again changes nothing.
   FRESH     DDL for all three on an empty database, load all three. Must end with the same
             columns, types, indexes and foreign keys as UPGRADE.
-  CONTROL   the generator as it is on `main` runs the same UPGRADE and must FAIL, so this test is
-            known to catch the gap it exists for. Skipped with --no-control.
+  CONTROL   the generator from v4.6.0, the last release without the fix, runs the same UPGRADE and
+            must FAIL, so this test is known to catch the gap it exists for. --no-control skips it.
 
 ADIF's zips come from adif.org, verified against data/adif_upstream_sha256.json, cached in
-$ATLAS_ADIF_CACHE (default ~/.cache/ionis-ai-atlas/adif, shared with Atlas's tests). Needs podman.
+$ATLAS_ADIF_CACHE (default ~/.cache/ionis-ai-atlas/adif, shared with Atlas's tests). Needs a container
+engine: $ENGINE if set, otherwise docker if installed, otherwise podman (as Atlas's scan.sh does).
 
     make test-adif-upgrade          (or: python3 scripts/test-adif-tier-upgrade.py)
 """
@@ -33,6 +34,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,6 +48,13 @@ PINS = json.loads((ROOT / "data/adif_upstream_sha256.json").read_text())
 CACHE = Path(os.environ.get("ATLAS_ADIF_CACHE", Path.home() / ".cache/ionis-ai-atlas/adif"))
 PG_IMAGE = "quay.io/sclorg/postgresql-16-c9s@sha256:f6bd736450b263a8259497092e0bf36e9716d4657a2ce10c12c8617d48e26c91"
 NEXT = "3199"                                  # the synthetic version's directory; its Version is 3.1.99
+# The last release whose generator could NOT upgrade an existing database. Pinned, never `main`: once
+# the fix merged, `main` upgrades cleanly and a control pointed at it proves nothing (it failed the
+# first run after the merge, which is how this line came to be).
+CONTROL_REF = "v4.6.0"
+# Docker Desktop on the M3, docker or podman on Linux: the same commands work on each. Hard-coding
+# one engine made this runnable only where it was written (Watson, ionis-core#42).
+ENGINE = os.environ.get("ENGINE") or ("docker" if shutil.which("docker") else "podman")
 
 
 def module(source: str, name: str):
@@ -112,11 +121,11 @@ def only(pins: dict, *vdirs) -> dict:
 class PG:
     def __init__(self, name: str):
         self.name = name
-        subprocess.run(["podman", "rm", "-f", name], capture_output=True)
-        subprocess.run(["podman", "run", "-d", "--name", name, "-e", "POSTGRESQL_ADMIN_PASSWORD=test-only",
+        subprocess.run([ENGINE, "rm", "-f", name], capture_output=True)
+        subprocess.run([ENGINE, "run", "-d", "--name", name, "-e", "POSTGRESQL_ADMIN_PASSWORD=test-only",
                         PG_IMAGE], check=True, capture_output=True)
         for _ in range(60):
-            if subprocess.run(["podman", "exec", name, "pg_isready", "-q"], capture_output=True).returncode == 0:
+            if subprocess.run([ENGINE, "exec", name, "pg_isready", "-q"], capture_output=True).returncode == 0:
                 break
             time.sleep(1)
         else:
@@ -125,7 +134,7 @@ class PG:
         self.psql("CREATE DATABASE ionis", db="postgres")
 
     def psql(self, sql: str, db: str = "ionis", single: bool = False) -> str:
-        args = ["podman", "exec", "-i", self.name, "psql", "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-d", db]
+        args = [ENGINE, "exec", "-i", self.name, "psql", "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-d", db]
         r = subprocess.run(args + (["-1"] if single else []), input=sql, capture_output=True, text=True)
         if r.returncode:
             raise RuntimeError(r.stderr.strip().splitlines()[-1] if r.stderr.strip() else "psql failed")
@@ -144,7 +153,7 @@ class PG:
         return [f"{v}: {self.psql(tier.audit_sql(a)).strip()}" for v, a in versions.items() if self.psql(tier.audit_sql(a)).strip()]
 
     def close(self):
-        subprocess.run(["podman", "rm", "-f", self.name], capture_output=True)
+        subprocess.run([ENGINE, "rm", "-f", self.name], capture_output=True)
 
 
 def upgrade(tier, spec: Path, pins: dict, pg: PG):
@@ -164,7 +173,7 @@ def upgrade(tier, spec: Path, pins: dict, pg: PG):
 # --- the test -------------------------------------------------------------------------------------
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--no-control", action="store_true", help="skip running the generator from main")
+    ap.add_argument("--no-control", action="store_true", help=f"skip running the generator from {CONTROL_REF}")
     args = ap.parse_args()
     import adif_tier as tier  # noqa: E402 (scripts/ is on sys.path when run from there)
 
@@ -202,17 +211,17 @@ def main() -> int:
             fresh.close()
 
         if not args.no_control:
-            src = subprocess.run(["git", "-C", str(ROOT), "show", "main:scripts/adif_tier.py"],
+            src = subprocess.run(["git", "-C", str(ROOT), "show", f"{CONTROL_REF}:scripts/adif_tier.py"],
                                  capture_output=True, text=True).stdout
             if not src:
-                check(False, "CONTROL: could not read scripts/adif_tier.py from main")
+                check(False, f"CONTROL: could not read scripts/adif_tier.py at {CONTROL_REF}")
             else:
-                old, ctl = module(src, "adif_tier_main"), PG("adif-control-test")
+                old, ctl = module(src, "adif_tier_control"), PG("adif-control-test")
                 try:
                     upgrade(old, spec, pins, ctl)
-                    check(False, "CONTROL: the generator on main upgraded cleanly, so this test would not catch the gap")
+                    check(False, f"CONTROL: the generator at {CONTROL_REF} upgraded cleanly, so this test would not catch the gap")
                 except RuntimeError as e:
-                    check(True, f"CONTROL: the generator on main fails the same upgrade ({e})")
+                    check(True, f"CONTROL: the generator at {CONTROL_REF} fails the same upgrade ({e})")
                 finally:
                     ctl.close()
 

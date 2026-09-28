@@ -43,7 +43,7 @@ help:
 	@printf "  install    Install to system (PREFIX=$(PREFIX), requires sudo)\n"
 	@printf "  uninstall  Remove installed files (requires sudo)\n"
 	@printf "  test       Run verification tests (requires ClickHouse)\n"
-	@printf "  test-adif-upgrade  Prove the ADIF DDL upgrades an existing database (podman)\n"
+	@printf "  test-adif-upgrade  Prove the ADIF DDL upgrades an existing database (docker or podman)\n"
 	@printf "  distclean  Remove all build artifacts\n"
 	@printf "\n"
 	@printf "Variables:\n"
@@ -102,7 +102,7 @@ uninstall:
 	rm -rf $(DESTDIR)$(PREFIX)/share/$(NAME)
 	@printf "Uninstall complete.\n"
 
-# Prove the generated ADIF DDL upgrades an existing database (needs podman; downloads ADIF's
+# Prove the generated ADIF DDL upgrades an existing database (needs docker or podman; downloads ADIF's
 # pinned zips once). See the script's header.
 test-adif-upgrade:
 	@python3 scripts/test-adif-tier-upgrade.py
