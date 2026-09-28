@@ -447,7 +447,7 @@ Not loaded as rows: the `Entities_<v>.xml` elements (`dxccEntity`, `pas`, `sas`:
 | `ionis.mv_band_range` | Each band as a `numrange` of MHz, GiST-indexed: "which band contains 14.074?" is one indexed lookup | Frequency → band is the most common question a logger asks; a range index answers it without a scan |
 | `ionis.mv_version_diff` | Per enumeration, field and data type: rows added, removed and changed between consecutive versions. "What's new in 3.1.7" (today: `mode +OFDM`, `submode +FREEDATA, FT2, RIBBIT_PIX, RIBBIT_SMS`) | A release note computed from the data, not written by hand |
 | `ionis.v_entity` | One row per DXCC entity: code, name, deleted, and counts of its primary and secondary subdivisions. No continent, zones or dates: ADIF doesn't publish them (above) | The one-stop "tell me about this entity", limited to what ADIF says |
-| `ionis.v_subdivision` | Entity → primary subdivision → secondary subdivision, with zones, oblast number, "contained within", deleted and import-only | Oblasts, states, provinces and counties as one hierarchy |
+| `ionis.v_subdivision` | Entity → primary subdivision → secondary subdivision, with zones (ADIF's own: the subdivision enumerations carry CQ and ITU zones normatively), oblast number, "contained within", deleted and import-only | Oblasts, states, provinces and counties as one hierarchy |
 | `ionis.v_mode` | Mode → its submodes, with deleted and import-only | The mode tree loggers display |
 | `ionis.v_field` | Each field with its data type, and its enumeration where it has one | What a validator needs to check a record |
 | `ionis.v_deprecated` | Every deleted or import-only value across all enumerations. The API labels it **"accept on import, never write"**, not "don't use" | What validators must treat specially: an old log may contain these values, and they stay valid to read |
@@ -455,7 +455,7 @@ Not loaded as rows: the `Entities_<v>.xml` elements (`dxccEntity`, `pas`, `sas`:
 
 ### API — read-only, additive under `/api/v1`
 
-Each table and view above gets an endpoint (Atlas implements it; the OpenAPI contract grows additively). The ones consumers will reach for first: entity detail with continent and zones; frequency → band; value search across enumerations; version changes; the subdivision hierarchy; test QSOs paged as JSON; and **every original ADIF file** by path, served as published with its SHA-256.
+Each table and view above gets an endpoint (Atlas implements it; the OpenAPI contract grows additively). The ones consumers will reach for first: entity detail (code, name, deleted, its subdivisions); frequency → band; value search across enumerations; version changes; the subdivision hierarchy; test QSOs paged as JSON; and **every original ADIF file** by path, served as published with its SHA-256.
 
 ## Load, and the one rule that keeps it near zero
 
