@@ -64,7 +64,7 @@ Recounted from Bob's `classified.tsv`, where the status codes are mutually exclu
 
 ## The shape: two schemas in PG-1
 
-**The `adif` schema** holds the ADIF enumerations loaded exactly as published — Band, Mode, Submode, DXCC Entity Code, Contest\_ID, Continent, Primary/Secondary Administrative Subdivision, Propagation Mode and the rest. **25 enumerations, 3,345 records** for 3.1.7. Never edited by us, and nothing of ours added to it. It also holds the rest of ADIF's published resource zip, the files, entity geography and test QSOs, specified in [The rest of ADIF's resource zip](#the-rest-of-adifs-resource-zip--for-every-consumer-not-only-us).
+**The `adif` schema** holds the ADIF enumerations loaded exactly as published — Band, Mode, Submode, DXCC Entity Code, Contest\_ID, Continent, Primary/Secondary Administrative Subdivision, Propagation Mode and the rest. **25 enumerations, 3,345 records** for 3.1.7. Never edited by us, and nothing of ours added to it. It also holds the rest of ADIF's published resource zip, its files and test QSOs, specified in [The rest of ADIF's resource zip](#the-rest-of-adifs-resource-zip--for-every-consumer-not-only-us).
 
 Source is **adif.org's own resource zip** for each version (`ADIF_316_resources_2025_09_15.zip`, `ADIF_317_resources_2026_03_22.zip`), not `adif-mcp`'s repackaging of it. The zip's SHA-256 and each JSON export's SHA-256 are pinned in `data/adif_upstream_sha256.json`, and `scripts/adif_tier.py` refuses a file that differs by one byte. So the base layer is generated from the published spec rather than typed in, and generated from ADIF's bytes rather than ours. (An earlier revision named `adif-mcp` as the source. `adif-mcp` 1.1.2 pins the same upstream SHA-256s, so its spec files are ADIF's exact bytes, but the loader reads adif.org's zip directly and needs no intermediary.)
 
@@ -394,12 +394,34 @@ Per version, **175 files, about 10.8 MB uncompressed** (zip 1.8 MB):
 | 28 other JSON exports | `datatypes`, `fields`, `enumerations`, 25 × `enumerations_<name>` | **No.** Compared record for record in both versions: 0 differences. They are slices of `all.json` |
 | The same 28 exports as CSV, TSV, ODS, XLSX and XML, plus `all.xml` and `adifexport.xsd` | Other formats of the same data | No — same data, different format |
 | `tests/ADIF_<v>_test_QSOs_<date>.adi` / `.adx` | Synthetic QSOs using every field and every non-deleted, non-import-only enumeration value: **6,191** (3.1.6), **6,197** (3.1.7); ADI and ADX counts agree | Yes — worked examples of the format |
-| `tests/source/Entities_<v>_<date>.xml` | The input ADIF's `CreateADIFTestFiles` builds those QSOs from | **Yes — per DXCC entity: continent, CQ zone, ITU zone, start date** |
+| `tests/source/Entities_<v>_<date>.xml` | The input ADIF's `CreateADIFTestFiles` builds those QSOs from | **No: test-generation seeds, not reference data** (below). Kept verbatim in `release_file` |
 | `tests/source/QSO_templates_<date>.xslt` | The generator's template | No |
 
 `Entities_<v>.xml` carries **340 `dxccEntity`** elements (exactly `all.json`'s non-deleted entities; the only one `all.json` adds is `0`, "none"), each with `continent` (one of ADIF's 7), a single CQ and a single ITU zone, and `startDate` on 54. It also carries 1,963 `pas` and 33 `sas` elements; their zones are already in ADIF's normative `Primary_Administrative_Subdivision` enumeration, and the only new attribute is `callTemplate` — a **synthetic** callsign pattern the generator fills in, not reference data. The file differs between versions (same size, different SHA-256).
 
-**Provenance, stated plainly:** the entity continent and zones come from ADIF's **test-generation input**, not a normative export. ADIF publishes it, so it belongs in `adif`, but every row and every API response carries its source file, and nothing presents it as part of the enumerations.
+**Not loaded as rows: its values are seeds, not facts** (Watson's review, #41, 2026-09-28). The
+file's purpose is to let the generator synthesise one plausible QSO per entity, so each entity gets
+exactly one value of each attribute, whatever the reality:
+
+| entity | `cqz` | `ituz` | reality |
+|---|---|---|---|
+| United States | 5 | 6 | CQ 3, 4, 5; ITU 6, 7, 8 |
+| Canada | 5 | 2 | CQ 1–5; ITU 2, 3, 4, 9, 75 |
+| Australia | 30 | 55 | CQ 29, 30; ITU 55, 58, 59 |
+
+For the USA, CQ 5 is the east coast and ITU 6 the west, so the pair isn't even consistent. The same
+file supplies `continent`, `startDate` and `callTemplate` (e.g. `VE#aaa`, a pattern for making up
+calls), all for the same purpose. **A table or endpoint presenting any of these as an entity's
+continent, zones or dates would publish a test seed as a fact**, and a logger scoring a contest from
+it would be wrong. The file stays available as ADIF's own bytes in `release_file`, like everything
+else in the zip.
+
+**What ADIF publishes normatively about DXCC entities is `all.json`'s `DXCC_Entity_Code`: code,
+name and `Deleted`, and nothing else.** No continent, no CQ or ITU zones, **no start or end dates**
+("was this entity valid when I worked it in 1995?" can't be answered from ADIF). Said here so the
+first consumer who needs them doesn't assume we dropped them. If Atlas needs them, they come from a
+source that publishes them as reference data (the ARRL DXCC list, for one), as an `ionis` dimension
+with its own provenance: a separate decision, not part of loading ADIF.
 
 ### Tables — `adif` stays "exactly as published"
 
@@ -407,13 +429,12 @@ Everything below comes from ADIF's zip. The zip's pinned SHA-256 covers every fi
 
 | Table | Key | Holds | Rows per version |
 | --- | --- | --- | --- |
-| `adif.release_file` | `(adif_version, path)` | **Every file in the zip, verbatim**: `path`, `sha256`, `size`, `media_type`, `content bytea`. Consumers who want ADIF's CSV, XLSX, XML or XSD get ADIF's own bytes — nothing regenerated | 175 |
-| `adif.dxcc_entity_geography` | `(adif_version, entity_code)` FK → `adif.dxcc_entity_code` | `continent` FK → `adif.continent`, `cq_zones smallint[]`, `itu_zones smallint[]` (arrays, as ADIF writes zones comma-separated elsewhere; every entity today has one of each), `start_date`, `source_path`, and the element's attributes verbatim in `record jsonb` | 340 |
+| `adif.release_file` | `(adif_version, path)` | **Every file in the zip, verbatim**: `path`, `sha256`, `size`, `media_type`, `content bytea`. Consumers who want ADIF's CSV, XLSX, XML or XSD get ADIF's own bytes — nothing regenerated. **Nothing could be:** each export carries its own generation timestamp (`all.json` `Created=2026-03-22T12:41:31Z`, `fields.json` `…12:41:55Z`), so a regenerated file would differ from ADIF's and fail its SHA-256, even with identical data (Watson, #41) | 175 |
 | `adif.test_qso` | `(adif_version, seq)`; `seq` is the record's position in the `.adi` | `record_adi text` (the record exactly as written), `fields jsonb` (field name → value, parsed by ADIF's ADI grammar: length-prefixed, `USERDEFn` and `APP_` fields kept), `source_path` | 6,191 / 6,197 |
 
-Not loaded as rows: the `pas`/`sas` elements (their only new attribute is synthetic), the `.adx` (the same QSOs as the `.adi`; served verbatim from `release_file`), and the other export formats (same data; served verbatim).
+Not loaded as rows: the `Entities_<v>.xml` elements (`dxccEntity`, `pas`, `sas`: test-generation seeds, above), the `.adx` (the same QSOs as the `.adi`; served verbatim from `release_file`), and the other export formats (same data; served verbatim).
 
-**Loader assertions, per version, each a refusal on mismatch:** zip SHA-256 equals the pin; 175 files extracted; `release_file` SHA-256s recomputed from the stored bytes match what was extracted; 340 geography rows, every one resolving to a non-deleted `dxcc_entity_code` and a `continent`; `test_qso` count equals both the `.adi`'s `<EOR>` count and the `.adx`'s `<RECORD>` count.
+**Loader assertions, per version, each a refusal on mismatch:** zip SHA-256 equals the pin; 175 files extracted; `release_file` SHA-256s recomputed from the stored bytes match what was extracted; `test_qso` count equals both the `.adi`'s `<EOR>` count and the `.adx`'s `<RECORD>` count.
 
 ### Derived views — ours, so in `ionis`, and named as derivations
 
@@ -425,11 +446,11 @@ Not loaded as rows: the `pas`/`sas` elements (their only new attribute is synthe
 | `ionis.mv_enumeration_value` | One row per value of every enumeration in every version: `(adif_version, enumeration, code, label, deleted, import_only, record)`. Global search ("FT4", "Bouvet", "20m") and "is this value valid for this field in this version?" | 25 tables become one searchable, indexed set: B-tree on `(adif_version, enumeration, code)`, trigram on `label` |
 | `ionis.mv_band_range` | Each band as a `numrange` of MHz, GiST-indexed: "which band contains 14.074?" is one indexed lookup | Frequency → band is the most common question a logger asks; a range index answers it without a scan |
 | `ionis.mv_version_diff` | Per enumeration, field and data type: rows added, removed and changed between consecutive versions. "What's new in 3.1.7" (today: `mode +OFDM`, `submode +FREEDATA, FT2, RIBBIT_PIX, RIBBIT_SMS`) | A release note computed from the data, not written by hand |
-| `ionis.v_entity` | One row per DXCC entity: code, name, deleted, continent, CQ/ITU zones, start date, and counts of its primary and secondary subdivisions | The one-stop "tell me about this entity" |
+| `ionis.v_entity` | One row per DXCC entity: code, name, deleted, and counts of its primary and secondary subdivisions. No continent, zones or dates: ADIF doesn't publish them (above) | The one-stop "tell me about this entity", limited to what ADIF says |
 | `ionis.v_subdivision` | Entity → primary subdivision → secondary subdivision, with zones, oblast number, "contained within", deleted and import-only | Oblasts, states, provinces and counties as one hierarchy |
 | `ionis.v_mode` | Mode → its submodes, with deleted and import-only | The mode tree loggers display |
 | `ionis.v_field` | Each field with its data type, and its enumeration where it has one | What a validator needs to check a record |
-| `ionis.v_deprecated` | Every deleted or import-only value across all enumerations | "Accept on import, never write": what validators must treat specially |
+| `ionis.v_deprecated` | Every deleted or import-only value across all enumerations. The API labels it **"accept on import, never write"**, not "don't use" | What validators must treat specially: an old log may contain these values, and they stay valid to read |
 | `ionis.v_adif_counts` | Per version, per table: rows loaded against the loader's asserted counts | The load audit, queryable |
 
 ### API — read-only, additive under `/api/v1`
@@ -446,7 +467,6 @@ All of this is small reference data. The cost is negligible *provided* ClickHous
 | — of which administrative subdivisions | 1,965 |
 | — DXCC entities · contest IDs · submodes | 403 · 256 · 187 |
 | Two ADIF versions side by side | \~6,700 |
-| ADIF entity geography, per version | 340 |
 | ADIF test QSOs, per version | 6,191 (3.1.6) · 6,197 (3.1.7) |
 | ADIF's published files, per version | 175 (\~10.8 MB) |
 | DXpeditions | 346 |
@@ -648,7 +668,7 @@ Order (Judge, 2026-09-26): this spec, then the PG-1 database initialised from it
 | Item | Status | Tracked in |
 | --- | --- | --- |
 | ADIF tier on PG-1: `adif` schema, 3.1.6 and 3.1.7 loaded, current version 3.1.7 | Built and tested; awaiting review, database onboarding and load | ionis-core#33 |
-| The rest of ADIF's zip: `release_file`, `dxcc_entity_geography`, `test_qso`; the `ionis` derived views; their API | Specified (this record); loader, views and API to build | ionis-core#40 |
+| The rest of ADIF's zip: `release_file`, `test_qso`; the `ionis` derived views; their API | Specified (this record); loader, views and API to build | ionis-core#40 |
 | `ionis-db-init` creates and validates schemas from this spec, ClickHouse and PostgreSQL | Requirement; not yet written into this record | this record |
 | PSKR P8 conformance check (Watson) | Not run | ionis-apps#37 |
 | RBN archive-to-bronze audit, then keep every record | After spec and database init | ionis-apps#38 |
