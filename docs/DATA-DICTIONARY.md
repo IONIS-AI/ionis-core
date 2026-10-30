@@ -157,7 +157,7 @@ manual run until silver is repointed -- silver is outside the bronze plan, so th
 | Table | Earliest | Latest | Note |
 |---|---|---|---|
 | `wspr.bronze` | 2008-03-11 | 2026-09-21 | see §5 — the first 10 minutes of each hour are incomplete for 2023-10 … 2025-04 |
-| `pskr.bronze` | 1970-01-01 | 2026-09-26 15:24:47 (frozen) | 74 rows at epoch zero — malformed upstream timestamps, not a gap. No rows after the freeze; live data is `pskr.capture_bronze` |
+| `pskr.bronze` | 1970-01-01 | 2026-09-26 15:24:47 (frozen) | 74 rows at epoch zero — malformed upstream timestamps, not a gap. **2026-05-09 19:00 – 05-12 21:00 UTC (75 hours) holds every spot twice:** the retired collector wrote each one twice into its own files (each file loaded once; `pskr.ingest_log` agrees with the files), about 109 M extra rows, so `count()` over those hours is doubled until deduplicated on `(timestamp, sender_call, receiver_call, frequency)`; `pskr.signatures` was built without that, so its May `spot_count` carries them. Measured 2026-10-30. No rows after the freeze; live data is `pskr.capture_bronze` |
 | `rbn.bronze` | 2009-02-21 | 2026-09-20 | |
 | `contest.bronze` | 1970-01-01 | **2088-11-30** | As sent: logger clocks set to the wrong year are stored as dated and tagged `off-declared-year`; years DateTime cannot hold (0201, 3000) are NULL with `timestamp-unrepresentable`. Real span is 1996-11-25 … 2025-08-31 |
 | `solar.kp_bronze` | 1932-01-01 | 2026-09-21 | definitive GFZ archive; zero incomplete months in 94 years |
